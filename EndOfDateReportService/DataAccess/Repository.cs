@@ -34,4 +34,9 @@ public class Repository
     {
         await context.PaymentMethods.AddAsync(paymentMethod);
     }
+
+    public async void CreateLane(Lane lane)
+    {
+       await  context.Lanes.AddAsync(lane);
+    }
 }

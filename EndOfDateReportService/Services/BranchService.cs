@@ -1,19 +1,27 @@
 ﻿using EndOfDateReportService.ServicesInterfaces;
 using Microsoft.Data.SqlClient;
 using System;
+using EndOfDateReportService.DataAccess;
+using EndOfDateReportService.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace EndOfDateReportService.Services
 {
     public class BranchService : IBranchInterface
     {
         private string connectionString;
-        public BranchService(IConfiguration configuration) 
+        private ReportContext _reportContext;
+        private Repository _repository;
+        private readonly int AMOUNT_OF_LANES;
+        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository) 
         {
             connectionString = configuration.GetConnectionString("DefaultConnection");
-
+            AMOUNT_OF_LANES = configuration.GetValue<int>("Lanes");
+            _reportContext = reportContext;
+            _repository = repository;
         }
 
-        public Dictionary<string, decimal> ExecuteQuery(DateTime startDate, DateTime endDate, int branchId, int stationId) 
+        private Dictionary<string, decimal> ExecuteQuery(DateTime startDate, DateTime endDate, int branchId, int stationId) 
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -32,7 +40,6 @@ namespace EndOfDateReportService.Services
                     Dictionary<string, decimal> dictionary = new Dictionary<string, decimal>();
                     while (reader.Read())
                     {
-                        // Acceder a los datos recuperados aquí
                         string paymentMethod = reader["PaymentMethod"].ToString();
                         decimal.TryParse(reader["ActualAmount"].ToString(), out decimal actualAmount);
                         dictionary[paymentMethod] = actualAmount;
@@ -43,12 +50,41 @@ namespace EndOfDateReportService.Services
 
         }
 
-        public void GenerateReport() 
-        { 
-            
-        
-        }
+        public async Task<IEnumerable<Branch>> GenerateReport(DateTime startDate, DateTime endDate)
+        {
+            var branches = await _reportContext.Branches.ToListAsync();
+            var lanes = AMOUNT_OF_LANES;
 
+            foreach (var branch in branches)
+            {
+                for (int lane=1;lane<=lanes;lane++)
+                {
+                    _repository.CreateLane(new Lane()
+                    {
+                        Id = lane,
+                        BranchId = branch.Id
+                    });
+
+                    var result = ExecuteQuery(startDate, endDate, branch.Id, lane);
+                    foreach (var pm in result)
+                    {
+                        var paymentMethod = new PaymentMethod()
+                        {
+                            BranchId = branch.Id,
+                            LaneId = lane,
+                            ActualAmount = pm.Value,
+                            Name = pm.Key,
+                            ReportDate = startDate
+                        };
+                        _repository.CreatePaymentMethodReport(paymentMethod);
+                    }
+                   
+                }
+            }
+
+            return await _repository.Get(startDate);
+        }
+        
     }
     
 
