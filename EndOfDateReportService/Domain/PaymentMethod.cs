@@ -5,28 +5,17 @@ namespace EndOfDateReportService.Domain;
 
 public class PaymentMethod
 {
-    [Key]
     public int Id { get; set; }
-    [Column("local_Id")]
-    public int LocalId { get; set; }
-    [Column("name")]
+    [Key]
     public string Name { get; set; }
-    [Column("lane_id")]
-    public int LaneId { get; set; }
-    [ForeignKey(nameof(LaneId))]
-    [InverseProperty(nameof(Domain.Lane.PaymentMethods))]
-    public Lane Lane { get; set; }
-    [Column("actual_amount")]
-    public float ActualAmount { get; set; }
-    [Column("reported_amount")]
-    public float ReportedAmount { get; set; }
-    [Column("total_variance")]
-    public float TotalVariance { get; set; } 
-    [Column("report_date")]
+    public decimal ActualAmount { get; set; }
+    public decimal ReportedAmount { get; set; }
+    public decimal TotalVariance { get; set; }
     public DateTime ReportDate { get; set; }
-    public int BranchId { get; set; }
-    [ForeignKey(nameof(BranchId))]
-    [InverseProperty(nameof(Domain.Branch.PaymentMethods))]
-    public Branch Branch { get; set; }
     
+    public int LaneId { get; set; }
+    public Lane Lane { get; set; }
+    
+    public int BranchId { get; set; }
+    public Branch Branch { get; set; }
 }

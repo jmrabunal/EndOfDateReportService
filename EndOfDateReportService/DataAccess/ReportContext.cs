@@ -12,18 +12,25 @@ public class ReportContext: DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Branch>().HasMany<Lane>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
-            .IsRequired();
-        modelBuilder.Entity<Branch>().HasMany<PaymentMethod>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
-            .IsRequired();
+        modelBuilder.Entity<Branch>()
+            .HasMany(b => b.Lanes)
+            .WithOne(l => l.Branch)
+            .HasForeignKey(l => l.BranchId);
 
-        modelBuilder.Entity<Lane>().HasMany<PaymentMethod>().WithOne(x => x.Lane).HasForeignKey(x => x.LaneId)
-            .IsRequired();
-        modelBuilder.Entity<Lane>().HasIndex(x => x.Id).IsUnique();
+        modelBuilder.Entity<Lane>()
+            .HasMany(l => l.PaymentMethods)
+            .WithOne(pm => pm.Lane)
+            .HasForeignKey(pm => pm.LaneId);
 
-        modelBuilder.Entity<PaymentMethod>().HasIndex(x => new { x.LocalId, x.LaneId, x.BranchId, x.ReportDate })
-            .IsUnique();
+        modelBuilder.Entity<PaymentMethod>()
+            .HasOne(pm => pm.Branch)
+            .WithMany()
+            .HasForeignKey(pm => pm.BranchId);
+
+        modelBuilder.Entity<PaymentMethod>().HasIndex(x => new { x.BranchId, x.ReportDate, x.LaneId }).IsUnique();
         modelBuilder.Entity<PaymentMethod>().Property(x => x.Id).ValueGeneratedOnAdd();
+
+        base.OnModelCreating(modelBuilder);
 
     }
 }
