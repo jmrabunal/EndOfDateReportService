@@ -62,4 +62,11 @@ public class Repository
         return await context.PaymentMethods.AnyAsync(x => x.ReportDate == new DateTime(reportDate.Year, reportDate.Month,
             reportDate.Day, reportDate.Hour, reportDate.Minute, reportDate.Second, DateTimeKind.Utc));
     }
+
+    public async Task<PaymentMethod> UpdatePaymentMethod(PaymentMethod paymentMethod)
+    {
+        var pm = context.PaymentMethods.Update(paymentMethod);
+        await context.SaveChangesAsync();
+        return pm.Entity;
+    }
 }
