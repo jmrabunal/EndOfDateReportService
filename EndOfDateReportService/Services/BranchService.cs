@@ -29,7 +29,7 @@ namespace EndOfDateReportService.Services
             {
                 connection.Open();
 
-                string sqlQuery = "SELECT\r\n    CASE\r\n        WHEN TP.MediaID = 1 THEN 'Cash'\r\n        WHEN TP.MediaID = 3 THEN 'EFTPOS'\r\n        WHEN TP.MediaID = 4 THEN 'Account'\r\n        WHEN TP.MediaID = 9 THEN 'Credit Card'\r\n        WHEN TP.MediaID = 10 THEN 'CLICK AND COLLECT'\r\n        WHEN TP.MediaID = 13 THEN 'Bank Payment'\r\n        WHEN TP.MediaID = 7 THEN 'Credit Note'\r\n        WHEN TP.MediaID = 6 THEN 'Voucher'\r\n        -- Add more WHEN clauses for other IDs if necessary\r\n    END AS PaymentMethod,\r\n    SUM(TP.Value) AS ActualAmount\r\nFROM AKPOS.dbo.TransHeaders TH\r\nINNER JOIN AKPOS.dbo.TransPayments TP ON TH.TransNo = TP.TransNo AND TH.Station = TP.Station\r\nWHERE TH.Logged >= @StartDate AND TH.Logged <= @EndDate\r\n    AND TH.Branch = @BranchID\r\n    AND TH.Station = @StationID\r\nGROUP BY\r\n    CASE\r\n        WHEN TP.MediaID = 1 THEN 'Cash'\r\n        WHEN TP.MediaID = 3 THEN 'EFTPOS'\r\n        WHEN TP.MediaID = 4 THEN 'Account'\r\n        WHEN TP.MediaID = 9 THEN 'Credit Card'\r\n        WHEN TP.MediaID = 10 THEN 'CLICK AND COLLECT'\r\n        WHEN TP.MediaID = 13 THEN 'Bank Payment'\r\n        WHEN TP.MediaID = 7 THEN 'Credit Note'\r\n        WHEN TP.MediaID = 6 THEN 'Voucher'\r\n        -- Add more WHEN clauses for other IDs if necessary\r\n    END;";                
+                string sqlQuery = "WITH AllPaymentMethods AS (\r\n    SELECT 'Cash' AS PaymentMethod\r\n    UNION ALL\r\n    SELECT 'EFTPOS'\r\n    UNION ALL\r\n    SELECT 'Account'\r\n    UNION ALL\r\n    SELECT 'Credit Card'\r\n    UNION ALL\r\n    SELECT 'CLICK AND COLLECT'\r\n    UNION ALL\r\n    SELECT 'Bank Payment'\r\n    UNION ALL\r\n    SELECT 'Credit Note'\r\n    UNION ALL\r\n    SELECT 'Voucher'\r\n    -- Add more PaymentMethods if necessary\r\n)\r\nSELECT\r\n    APM.PaymentMethod,\r\n    COALESCE(SUM(TP.Value), 0) AS ActualAmount\r\nFROM AllPaymentMethods APM\r\nLEFT JOIN (\r\n    SELECT TH.TransNo, TP.MediaID, SUM(TP.Value) AS Value\r\n    FROM AKPOS.dbo.TransHeaders TH\r\n    LEFT JOIN AKPOS.dbo.TransPayments TP ON TH.TransNo = TP.TransNo AND TH.Station = TP.Station\r\n    WHERE TH.Logged >= @StartDate AND TH.Logged <= @EndDate\r\n    AND TH.Branch = @BranchId AND TH.Station = @StationId\r\n    GROUP BY TH.TransNo, TP.MediaID\r\n) TP ON APM.PaymentMethod = \r\n    CASE\r\n        WHEN TP.MediaID = 1 THEN 'Cash'\r\n        WHEN TP.MediaID = 3 THEN 'EFTPOS'\r\n        WHEN TP.MediaID = 4 THEN 'Account'\r\n        WHEN TP.MediaID = 9 THEN 'Credit Card'\r\n        WHEN TP.MediaID = 10 THEN 'CLICK AND COLLECT'\r\n        WHEN TP.MediaID = 13 THEN 'Bank Payment'\r\n        WHEN TP.MediaID = 7 THEN 'Credit Note'\r\n        WHEN TP.MediaID = 6 THEN 'Voucher'\r\n        -- Add more WHEN clauses for other IDs if necessary\r\n    END\r\nGROUP BY APM.PaymentMethod\r\nORDER BY APM.PaymentMethod;";
                 SqlCommand command = new SqlCommand(sqlQuery, connection);
                 command.Parameters.AddWithValue("@StartDate", startDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
@@ -53,7 +53,7 @@ namespace EndOfDateReportService.Services
 
         public async Task<IEnumerable<Branch>> GenerateReport(DateTime startDate, DateTime endDate)
         {
-            if(await _repository.TryGetReport(startDate))
+            if(!await _repository.TryGetReport(startDate))
             {
                 var branches = await _reportContext.Branches.ToListAsync();
 
@@ -63,9 +63,10 @@ namespace EndOfDateReportService.Services
                 
                     for (int lane=1;lane<=branchAmountOfLanes;lane++)
                     {
-                        if (! await _repository.GetLaneByBranchId(lane, branch.Id))
+                        var laneFromDb = await _repository.GetLaneByBranchId(lane, branch.Id);
+                        if (laneFromDb is null)
                         {
-                            _repository.CreateLane(new Lane()
+                            laneFromDb = await _repository.CreateLane(new Lane()
                             {
                                 LaneId = lane,
                                 BranchId = branch.Id
@@ -73,17 +74,18 @@ namespace EndOfDateReportService.Services
                         }
 
                         var result = ExecuteQuery(startDate, endDate, branch.Id, lane);
+
                         foreach (var pm in result)
                         {
                             var paymentMethod = new PaymentMethod()
                             {
                                 BranchId = branch.Id,
-                                LaneId = lane,
+                                LaneId = laneFromDb.Id,
                                 ActualAmount = pm.Value,
                                 Name = pm.Key,
                                 ReportDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc)
                             };
-                            _repository.CreatePaymentMethodReport(paymentMethod);
+                           await _repository.CreatePaymentMethodReport(paymentMethod);
                         }
                    
                     }

@@ -21,22 +21,23 @@ public class Repository
             .ToListAsync(); 
     }
 
-    public async void CreatePaymentMethodReport(PaymentMethod paymentMethod)
+    public async Task CreatePaymentMethodReport(PaymentMethod paymentMethod)
     {
         await context.PaymentMethods.AddAsync(paymentMethod);
         await context.SaveChangesAsync();
 
     }
 
-    public async void CreateLane(Lane lane)
+    public async Task<Lane> CreateLane(Lane entity)
     {
-       await  context.Lanes.AddAsync(lane);
-       await context.SaveChangesAsync();
+        var lane = await  context.Lanes.AddAsync(entity);
+        await context.SaveChangesAsync();
+        return lane.Entity;
     }
-
-    public async Task<bool> GetLaneByBranchId(int laneId, int branchId)
+    
+    public async Task<Lane> GetLaneByBranchId(int laneId, int branchId)
     {
-        return await context.Lanes.AnyAsync(x => x.LaneId == laneId && x.BranchId == branchId);
+        return await context.Lanes.FirstOrDefaultAsync(x => x.LaneId == laneId && x.BranchId == branchId);
     }
 
     public async Task<bool> TryGetReport(DateTime reportDate)
