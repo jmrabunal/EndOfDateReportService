@@ -35,4 +35,10 @@ public class Repository
     {
         return await context.Lanes.AnyAsync(x => x.LaneId == laneId && x.BranchId == branchId);
     }
+
+    public async Task<bool> TryGetReport(DateTime reportDate)
+    {
+        return await context.PaymentMethods.AnyAsync(x => x.ReportDate == new DateTime(reportDate.Year, reportDate.Month,
+            reportDate.Day, reportDate.Hour, reportDate.Minute, reportDate.Second, DateTimeKind.Utc));
+    }
 }
