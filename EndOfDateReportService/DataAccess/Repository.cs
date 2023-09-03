@@ -24,11 +24,14 @@ public class Repository
     public async void CreatePaymentMethodReport(PaymentMethod paymentMethod)
     {
         await context.PaymentMethods.AddAsync(paymentMethod);
+        await context.SaveChangesAsync();
+
     }
 
     public async void CreateLane(Lane lane)
     {
        await  context.Lanes.AddAsync(lane);
+       await context.SaveChangesAsync();
     }
 
     public async Task<bool> GetLaneByBranchId(int laneId, int branchId)
