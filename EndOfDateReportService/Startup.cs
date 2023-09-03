@@ -23,7 +23,7 @@ namespace EndOfDateReportService
             services.AddSwaggerGen();
             services.AddDbContextPool<ReportContext>((provider, options) =>
             {
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
+                options.UseNpgsql(Configuration.GetConnectionString("LocalConnection"));
             });
             
             services.AddScoped<Repository>();

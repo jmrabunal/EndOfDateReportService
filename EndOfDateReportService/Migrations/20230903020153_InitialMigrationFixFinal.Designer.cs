@@ -3,38 +3,38 @@ using System;
 using EndOfDateReportService.DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace EndOfDateReportService.Migrations
 {
     [DbContext(typeof(ReportContext))]
-    [Migration("20230903011210_InitialMigration2")]
-    partial class InitialMigration2
+    [Migration("20230903020153_InitialMigrationFixFinal")]
+    partial class InitialMigrationFixFinal
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "6.0.21")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("EndOfDateReportService.Domain.Branch", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -67,21 +67,16 @@ namespace EndOfDateReportService.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("BranchId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("BranchId1")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("BranchId1");
 
                     b.HasIndex("Id")
                         .IsUnique();
@@ -92,42 +87,35 @@ namespace EndOfDateReportService.Migrations
             modelBuilder.Entity("EndOfDateReportService.Domain.PaymentMethod", b =>
                 {
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("ActualAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<int>("BranchId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("LaneId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("LaneId1")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("ReportDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("ReportedAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("TotalVariance")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.HasKey("Name");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("LaneId");
-
-                    b.HasIndex("LaneId1");
 
                     b.HasIndex("Name", "LaneId", "BranchId", "ReportDate")
                         .IsUnique();
@@ -138,37 +126,21 @@ namespace EndOfDateReportService.Migrations
             modelBuilder.Entity("EndOfDateReportService.Domain.Lane", b =>
                 {
                     b.HasOne("EndOfDateReportService.Domain.Branch", "Branch")
-                        .WithMany()
+                        .WithMany("Lanes")
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("EndOfDateReportService.Domain.Branch", null)
-                        .WithMany("Lanes")
-                        .HasForeignKey("BranchId1");
 
                     b.Navigation("Branch");
                 });
 
             modelBuilder.Entity("EndOfDateReportService.Domain.PaymentMethod", b =>
                 {
-                    b.HasOne("EndOfDateReportService.Domain.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("EndOfDateReportService.Domain.Lane", "Lane")
-                        .WithMany()
+                        .WithMany("PaymentMethods")
                         .HasForeignKey("LaneId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("EndOfDateReportService.Domain.Lane", null)
-                        .WithMany("PaymentMethods")
-                        .HasForeignKey("LaneId1");
-
-                    b.Navigation("Branch");
 
                     b.Navigation("Lane");
                 });
