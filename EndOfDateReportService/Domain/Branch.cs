@@ -8,6 +8,5 @@ public class Branch
     [Key]
     public int Id { get; set; }
     public string Name { get; set; }
-    
     public ICollection<Lane> Lanes { get; set; }
 }

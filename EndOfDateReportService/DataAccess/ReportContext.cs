@@ -8,7 +8,7 @@ public class ReportContext: DbContext
 {
     public ReportContext(DbContextOptions<ReportContext> options) : base(options)
     {
-        
+        ChangeTracker.LazyLoadingEnabled = false;
     }
     public DbSet<Branch> Branches { get; set; }
     public DbSet<Lane> Lanes { get; set; }
@@ -16,6 +16,13 @@ public class ReportContext: DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var navigation in entityType.GetNavigations())
+            {
+                navigation.SetPropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
+            }
+        }
         modelBuilder.Entity<Branch>().HasMany<Lane>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
             .IsRequired();
            
