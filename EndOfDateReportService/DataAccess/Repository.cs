@@ -39,4 +39,9 @@ public class Repository
     {
        await  context.Lanes.AddAsync(lane);
     }
+
+    public async Task<bool> GetLaneByBranchId(int laneId, int branchId)
+    {
+        return await context.Lanes.AnyAsync(x => x.Id == laneId && x.BranchId == branchId);
+    }
 }

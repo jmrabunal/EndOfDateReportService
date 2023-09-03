@@ -13,8 +13,10 @@ namespace EndOfDateReportService.Services
         private ReportContext _reportContext;
         private Repository _repository;
         private readonly int AMOUNT_OF_LANES;
-        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository) 
+        private readonly IConfiguration _configuration;
+        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository)
         {
+            _configuration = configuration;
             connectionString = configuration.GetConnectionString("DefaultConnection");
             AMOUNT_OF_LANES = configuration.GetValue<int>("Lanes");
             _reportContext = reportContext;
@@ -53,17 +55,21 @@ namespace EndOfDateReportService.Services
         public async Task<IEnumerable<Branch>> GenerateReport(DateTime startDate, DateTime endDate)
         {
             var branches = await _reportContext.Branches.ToListAsync();
-            var lanes = AMOUNT_OF_LANES;
 
             foreach (var branch in branches)
             {
-                for (int lane=1;lane<=lanes;lane++)
+                int.TryParse(_configuration.GetSection("LanesByBranch").GetValue<string>(branch.Id.ToString()), out int branchAmountOfLanes);
+                
+                for (int lane=1;lane<=branchAmountOfLanes;lane++)
                 {
-                    _repository.CreateLane(new Lane()
+                    if (! await _repository.GetLaneByBranchId(lane, branch.Id))
                     {
-                        Id = lane,
-                        BranchId = branch.Id
-                    });
+                        _repository.CreateLane(new Lane()
+                        {
+                            Id = lane,
+                            BranchId = branch.Id
+                        });
+                    }
 
                     var result = ExecuteQuery(startDate, endDate, branch.Id, lane);
                     foreach (var pm in result)
