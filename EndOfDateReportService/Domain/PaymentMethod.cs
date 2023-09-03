@@ -5,8 +5,9 @@ namespace EndOfDateReportService.Domain;
 
 public class PaymentMethod
 {
-    public int Id { get; set; }
     [Key]
+    public int Id { get; set; }
+    
     public string Name { get; set; }
     public decimal ActualAmount { get; set; }
     public decimal ReportedAmount { get; set; }
