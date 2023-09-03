@@ -1,3 +1,4 @@
+using EndOfDateReportService.Domain;
 using EndOfDateReportService.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +19,13 @@ public class ReportController:ControllerBase
     {
         var result = await _branchService.GenerateReport(startDate, endDate);
         return Ok(result);
+    }
+
+    [HttpPut()]
+    public async Task<IActionResult> UpdateReport([FromBody] IEnumerable<PaymentMethod> paymentMethod)
+    {
+        await _branchService.UpdatePaymentMethods(paymentMethod);
+        return Ok();
     }
 }
 
