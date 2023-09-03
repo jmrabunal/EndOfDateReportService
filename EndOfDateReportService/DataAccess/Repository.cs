@@ -11,16 +11,7 @@ public class Repository
         context = reportContent;
     }
     
-    public async Task<IEnumerable<PaymentMethod>> GetPaymentMethodReport(DateTime reportDate, int laneId, int branchId)
-    {
-        return await context.PaymentMethods.Include(x => x.Lane).Include(x=>x.Branch).Where(x =>
-            x.LaneId == laneId && x.ReportDate == reportDate && x.BranchId == branchId).ToListAsync();
-    }
-    
-    public async Task<IEnumerable<PaymentMethod>> GetAllPaymentMethodReportByBranchId(DateTime reportDate, int laneId, int branchId)
-    {
-        return await context.PaymentMethods.Include(x => x.Lane).Include(x=>x.Branch).Where(x => x.ReportDate == reportDate && x.BranchId == branchId).ToListAsync();
-    }
+   
 
     public async Task<IEnumerable<Branch>> Get(DateTime reportDate)
     {

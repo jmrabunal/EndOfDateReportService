@@ -18,13 +18,16 @@ public class ReportContext: DbContext
     {
         modelBuilder.Entity<Branch>().HasMany<Lane>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
             .IsRequired();
-        modelBuilder.Entity<Branch>().HasMany<PaymentMethod>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
-            .IsRequired();
 
         modelBuilder.Entity<Lane>().HasMany<PaymentMethod>().WithOne(x => x.Lane).HasForeignKey(x => x.LaneId)
             .IsRequired();
         modelBuilder.Entity<Lane>().HasIndex(x => x.Id).IsUnique();
+        modelBuilder.Entity<Lane>().HasOne(x => x.Branch).WithMany(x => x.Lanes)
+            .HasForeignKey(x => x.BranchId);
 
+        
+        modelBuilder.Entity<PaymentMethod>().HasOne(x => x.Lane).WithMany(x => x.PaymentMethods)
+            .HasForeignKey(x => x.LaneId);
         modelBuilder.Entity<PaymentMethod>().HasIndex(x => new { x.Name, x.LaneId, x.BranchId, x.ReportDate })
             .IsUnique();
         modelBuilder.Entity<PaymentMethod>().Property(x => x.Id).ValueGeneratedOnAdd();
