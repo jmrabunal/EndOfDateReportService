@@ -21,7 +21,7 @@ public class ReportContext: DbContext
            
         modelBuilder.Entity<Lane>().HasMany<PaymentMethod>().WithOne(x => x.Lane).HasForeignKey(x => x.LaneId)
             .IsRequired();
-        modelBuilder.Entity<Lane>().HasIndex(x => x.Id).IsUnique();
+        modelBuilder.Entity<Lane>().Property(x => x.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<Lane>().HasOne(x => x.Branch).WithMany(x => x.Lanes)
             .HasForeignKey(x => x.BranchId);
 

@@ -66,7 +66,7 @@ namespace EndOfDateReportService.Services
                     {
                         _repository.CreateLane(new Lane()
                         {
-                            Id = lane,
+                            LaneId = lane,
                             BranchId = branch.Id
                         });
                     }

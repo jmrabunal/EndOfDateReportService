@@ -33,6 +33,6 @@ public class Repository
 
     public async Task<bool> GetLaneByBranchId(int laneId, int branchId)
     {
-        return await context.Lanes.AnyAsync(x => x.Id == laneId && x.BranchId == branchId);
+        return await context.Lanes.AnyAsync(x => x.LaneId == laneId && x.BranchId == branchId);
     }
 }
