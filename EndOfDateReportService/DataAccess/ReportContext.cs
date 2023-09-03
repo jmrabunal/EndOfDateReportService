@@ -17,8 +17,8 @@ public class ReportContext: DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Branch>().HasMany<Lane>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
-            .IsRequired();
-
+            .IsRequired().OnDelete(DeleteBehavior.Restrict);;
+           
         modelBuilder.Entity<Lane>().HasMany<PaymentMethod>().WithOne(x => x.Lane).HasForeignKey(x => x.LaneId)
             .IsRequired();
         modelBuilder.Entity<Lane>().HasIndex(x => x.Id).IsUnique();
