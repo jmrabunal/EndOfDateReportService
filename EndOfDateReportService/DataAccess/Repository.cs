@@ -15,27 +15,10 @@ public class Repository
 
     public async Task<IEnumerable<Branch>> Get(DateTime reportDate)
     {
-        var branches = await context.Branches.ToListAsync();
-
-        // Retrieve lanes for each branch
-        foreach (var branch in branches)
-        {
-            branch.Lanes = await context.Lanes
-                .Include(lane => lane.PaymentMethods)
-                .Where(lane => lane.BranchId == branch.Id)
-                .ToListAsync();
-
-            // Clear the reference to the branch within each lane
-            foreach (var lane in branch.Lanes)
-            {
-                lane.Branch = null;
-                foreach (var paymentMethod in lane.PaymentMethods) 
-                {
-                    paymentMethod.Lane = null;
-                }
-            }
-        }
-        return branches;
+        return await context.Branches
+            .Include(branch => branch.Lanes)
+            .ThenInclude(lane => lane.PaymentMethods.Where(pm => pm.ReportDate == reportDate))
+            .ToListAsync(); 
     }
 
     public async Task CreatePaymentMethodReport(PaymentMethod paymentMethod)

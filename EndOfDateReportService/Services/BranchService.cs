@@ -94,11 +94,18 @@ namespace EndOfDateReportService.Services
             return await _repository.Get(new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc));
         }
 
-        public async Task UpdatePaymentMethods(IEnumerable<PaymentMethod> paymentMethods)
+        public async Task UpdatePaymentMethods(IEnumerable<Branch> branches)
         {
-            foreach (var pm in paymentMethods)
+            foreach (var branch in branches)
             {
-                await _repository.UpdatePaymentMethod(pm);
+                foreach (var lane in branch.Lanes )
+                {
+                    foreach (var pm in lane.PaymentMethods)
+                    {
+                        await _repository.UpdatePaymentMethod(pm);
+                    }
+                    
+                }
             }
             
         }

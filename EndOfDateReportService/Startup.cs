@@ -27,6 +27,7 @@ namespace EndOfDateReportService
             });
             
             services.AddScoped<Repository>();
+            services.AddAutoMapper(typeof(AutoMapper));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
