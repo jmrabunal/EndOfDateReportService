@@ -57,8 +57,9 @@ namespace EndOfDateReportService.Services
 
                 foreach (var branch in branches)
                 {
+                    
                     int.TryParse(_configuration.GetSection("LanesByBranch").GetValue<string>(branch.Id.ToString()), out int branchAmountOfLanes);
-                
+                    
                     for (int lane=1;lane<=branchAmountOfLanes;lane++)
                     {
                         var laneFromDb = await _repository.GetLaneByBranchId(lane, branch.Id);
