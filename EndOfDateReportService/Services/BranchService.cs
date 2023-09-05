@@ -13,12 +13,14 @@ namespace EndOfDateReportService.Services
         private ReportContext _reportContext;
         private Repository _repository;
         private readonly IConfiguration _configuration;
-        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository)
+        private PdfService _pdfService;
+        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository, PdfService pdfService)
         {
             _configuration = configuration;
             connectionString = configuration.GetConnectionString("DefaultConnection");
             _reportContext = reportContext;
             _repository = repository;
+            _pdfService = pdfService;
         }
 
         private async Task<Dictionary<string, decimal>> ExecuteQuery(DateTime startDate, DateTime endDate, int branchId, int stationId) 
@@ -27,7 +29,7 @@ namespace EndOfDateReportService.Services
             {
                 await connection.OpenAsync();
 
-                string sqlQuery = "WITH AllPaymentMethods AS (\r\n    SELECT 'Cash' AS PaymentMethod\r\n    UNION ALL\r\n    SELECT 'EFTPOS'\r\n    UNION ALL\r\n    SELECT 'Account'\r\n    UNION ALL\r\n    SELECT 'Credit Card'\r\n    UNION ALL\r\n    SELECT 'CLICK AND COLLECT'\r\n    UNION ALL\r\n    SELECT 'Bank Payment'\r\n    UNION ALL\r\n    SELECT 'Credit Note'\r\n    UNION ALL\r\n    SELECT 'Voucher'\r\n    -- Add more PaymentMethods if necessary\r\n)\r\nSELECT\r\n    APM.PaymentMethod,\r\n    COALESCE(SUM(TP.Value), 0) AS ActualAmount\r\nFROM AllPaymentMethods APM\r\nLEFT JOIN (\r\n    SELECT TH.TransNo, TP.MediaID, SUM(TP.Value) AS Value\r\n    FROM Infinity.dbo.TransHeaders TH\r\n    LEFT JOIN Infinity.dbo.TransPayments TP ON TH.TransNo = TP.TransNo AND TH.Station = TP.Station\r\n    WHERE TH.Logged >= @StartDate AND TH.Logged <= @EndDate\r\n    AND TH.Branch = @BranchId AND TH.Station = @StationId\r\n    GROUP BY TH.TransNo, TP.MediaID\r\n) TP ON APM.PaymentMethod = \r\n    CASE\r\n        WHEN TP.MediaID = 1 THEN 'Cash'\r\n        WHEN TP.MediaID = 3 THEN 'EFTPOS'\r\n        WHEN TP.MediaID = 4 THEN 'Account'\r\n        WHEN TP.MediaID = 9 THEN 'Credit Card'\r\n        WHEN TP.MediaID = 10 THEN 'CLICK AND COLLECT'\r\n        WHEN TP.MediaID = 13 THEN 'Bank Payment'\r\n        WHEN TP.MediaID = 7 THEN 'Credit Note'\r\n        WHEN TP.MediaID = 6 THEN 'Voucher'\r\n        -- Add more WHEN clauses for other IDs if necessary\r\n    END\r\nGROUP BY APM.PaymentMethod\r\nORDER BY APM.PaymentMethod;";
+                string sqlQuery = "WITH AllPaymentMethods AS (\r\n    SELECT 'Cash' AS PaymentMethod\r\n    UNION ALL\r\n    SELECT 'EFTPOS'\r\n    UNION ALL\r\n    SELECT 'Account'\r\n    UNION ALL\r\n    SELECT 'Credit Card'\r\n    UNION ALL\r\n    SELECT 'EXTRA CASH'\r\n    UNION ALL\r\n    SELECT 'Bank Payment'\r\n    UNION ALL\r\n    SELECT 'Credit Note'\r\n    UNION ALL\r\n    SELECT 'Voucher'\r\n    -- Add more PaymentMethods if necessary\r\n)\r\nSELECT\r\n    APM.PaymentMethod,\r\n    COALESCE(SUM(TP.Value), 0) AS ActualAmount\r\nFROM AllPaymentMethods APM\r\nLEFT JOIN (\r\n    SELECT TH.TransNo, TP.MediaID, SUM(TP.Value) AS Value\r\n    FROM Infinity.dbo.TransHeaders TH\r\n    LEFT JOIN Infinity.dbo.TransPayments TP ON TH.TransNo = TP.TransNo AND TH.Station = TP.Station\r\n    WHERE TH.Logged >= @StartDate AND TH.Logged <= @EndDate\r\n    AND TH.Branch = @BranchId AND TH.Station = @StationId\r\n    GROUP BY TH.TransNo, TP.MediaID\r\n) TP ON APM.PaymentMethod = \r\n    CASE\r\n        WHEN TP.MediaID = 1 THEN 'Cash'\r\n        WHEN TP.MediaID = 3 THEN 'EFTPOS'\r\n        WHEN TP.MediaID = 4 THEN 'Account'\r\n        WHEN TP.MediaID = 9 THEN 'Credit Card'\r\n        WHEN TP.MediaID = 10 THEN 'EXTRA CASH'\r\n        WHEN TP.MediaID = 13 THEN 'Bank Payment'\r\n        WHEN TP.MediaID = 7 THEN 'Credit Note'\r\n        WHEN TP.MediaID = 6 THEN 'Voucher'\r\n        -- Add more WHEN clauses for other IDs if necessary\r\n    END\r\nGROUP BY APM.PaymentMethod\r\nORDER BY APM.PaymentMethod;";
                 SqlCommand command = new SqlCommand(sqlQuery, connection);
                 command.Parameters.AddWithValue("@StartDate", startDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
@@ -110,8 +112,15 @@ namespace EndOfDateReportService.Services
             }
             
         }
-        
-    }
-    
 
+        public void PdfGenerator(DateTime date, int branchId)
+        {
+
+            var branch = _reportContext.Branches.Include(x => x.Lanes).ThenInclude(l => l.PaymentMethods.Where(pm => pm.ReportDate == new DateTime(date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, DateTimeKind.Utc))).FirstOrDefault(p => p.Id == branchId);
+            if (branch != null)
+            {
+                _pdfService.GenerateBranchPaymentMethodsPdf(branch);
+            }
+        }
+    }
 };

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -11,6 +12,7 @@ public class Lane
     public int LaneId { get; set; }
     public int BranchId { get; set; }
     [JsonIgnore]
-    public Branch Branch { get; set; }
+    [BindNever]
+    public Branch? Branch { get; set; }
     public ICollection<PaymentMethod> PaymentMethods { get; set; }
 }

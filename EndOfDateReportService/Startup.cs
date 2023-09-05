@@ -1,5 +1,6 @@
 using EndOfDateReportService.DataAccess;
 using EndOfDateReportService.Services;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 
 namespace EndOfDateReportService
@@ -15,8 +16,13 @@ namespace EndOfDateReportService
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = long.MaxValue; 
+            });
+
+            services.AddCors();
             services.AddScoped<BranchService>();
-            
             
             services.AddHttpClient();
             services.AddControllers();
@@ -28,6 +34,7 @@ namespace EndOfDateReportService
             
             services.AddScoped<Repository>();
             services.AddAutoMapper(typeof(AutoMapper));
+            services.AddScoped<PdfService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -39,6 +46,12 @@ namespace EndOfDateReportService
                 app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "API de BridgetIt V1"); });
             }
 
+            app.UseCors(builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            });
 
             app.UseRouting();
 

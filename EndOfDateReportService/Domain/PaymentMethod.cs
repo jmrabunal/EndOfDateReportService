@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -16,6 +17,7 @@ public class PaymentMethod
     public DateTime ReportDate { get; set; }
     public int LaneId { get; set; }
     [JsonIgnore]
-    public Lane Lane { get; set; }
+    [BindNever]
+    public Lane? Lane { get; set; }
     public int BranchId { get; set; }
 }
