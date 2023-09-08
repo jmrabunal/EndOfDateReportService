@@ -60,36 +60,36 @@ namespace EndOfDateReportService.Services
                 foreach (var branch in branches)
                 {
                     
-                    int.TryParse(_configuration.GetSection("LanesByBranch").GetValue<string>(branch.Id.ToString()), out int branchAmountOfLanes);
-                    
-                    for (int lane=1;lane<=branchAmountOfLanes;lane++)
-                    {
-                        var laneFromDb = await _repository.GetLaneByBranchId(lane, branch.Id);
-                        if (laneFromDb is null)
-                        {
-                            laneFromDb = await _repository.CreateLane(new Lane()
-                            {
-                                LaneId = lane,
-                                BranchId = branch.Id
-                            });
-                        }
+                   var section =  _configuration.GetSection("LanesByBranch").GetSection(branch.Id.ToString());
+                   var lanes  = section.AsEnumerable();
+                   foreach (var laneKey in lanes)
+                   {
+                       int.TryParse(laneKey.Value, out int lane);
+                       var laneFromDb = await _repository.GetLaneByBranchId(lane, branch.Id);
+                       if (laneFromDb is null)
+                       {
+                           laneFromDb = await _repository.CreateLane(new Lane()
+                           {
+                               LaneId = lane,
+                               BranchId = branch.Id
+                           });
+                       }
 
-                        var result = await ExecuteQuery(startDate, endDate, branch.Id, lane);
+                       var result = await ExecuteQuery(startDate, endDate, branch.Id, lane);
 
-                        foreach (var pm in result)
-                        {
-                            var paymentMethod = new PaymentMethod()
-                            {
-                                BranchId = branch.Id,
-                                LaneId = laneFromDb.Id,
-                                ActualAmount = pm.Value,
-                                Name = pm.Key,
-                                ReportDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc)
-                            };
+                       foreach (var pm in result)
+                       {
+                           var paymentMethod = new PaymentMethod()
+                           {
+                               BranchId = branch.Id,
+                               LaneId = laneFromDb.Id,
+                               ActualAmount = pm.Value,
+                               Name = pm.Key,
+                               ReportDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc)
+                           };
                            await _repository.CreatePaymentMethodReport(paymentMethod);
-                        }
-                   
-                    }
+                       }
+                   }
                 }
 
             }
