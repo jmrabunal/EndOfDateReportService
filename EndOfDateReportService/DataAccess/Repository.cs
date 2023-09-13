@@ -48,8 +48,15 @@ public class Repository
 
     public async Task<PaymentMethod> UpdatePaymentMethod(PaymentMethod paymentMethod)
     {
-        var pm = context.PaymentMethods.Update(paymentMethod);
-        await context.SaveChangesAsync();
-        return pm.Entity;
+        try
+        {
+            var pm = context.PaymentMethods.Update(paymentMethod);
+            await context.SaveChangesAsync();
+            return pm.Entity;
+        }catch (Exception ex)
+        {
+            var e =ex.Message;
+            return paymentMethod;
+        }
     }
 }

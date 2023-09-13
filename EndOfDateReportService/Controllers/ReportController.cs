@@ -2,10 +2,10 @@ using AutoMapper;
 using EndOfDateReportService.Domain;
 using EndOfDateReportService.Models;
 using EndOfDateReportService.Services;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EndOfDateReportService.Controllers;
-
 [ApiController]
 [Route("api/reports")]
 public class ReportController:ControllerBase

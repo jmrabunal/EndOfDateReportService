@@ -16,6 +16,7 @@ namespace EndOfDateReportService
 
         public void ConfigureServices(IServiceCollection services)
         {
+            
             services.Configure<FormOptions>(options =>
             {
                 options.MultipartBodyLengthLimit = long.MaxValue; 
@@ -31,7 +32,6 @@ namespace EndOfDateReportService
             {
                 options.UseNpgsql(Configuration.GetConnectionString("LocalConnection"));
             });
-            
             services.AddScoped<Repository>();
             services.AddAutoMapper(typeof(AutoMapper));
             services.AddScoped<PdfService>();
