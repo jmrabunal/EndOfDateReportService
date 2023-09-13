@@ -26,7 +26,7 @@ namespace EndOfDateReportService.Services
             _configuration = configuration;
         }
 
-        public async Task GenerateBranchPaymentMethodsPdf(Branch branch, DateTime date)
+        public async Task<byte[]> GenerateBranchPaymentMethodsPdf(Branch branch, DateTime date)
         {
             var path = _configuration.GetSection("reportPath");
             String currentDirectory = Directory.GetCurrentDirectory() + "\\" + path.Value;
@@ -146,6 +146,13 @@ namespace EndOfDateReportService.Services
             document.Add(paragraphEFTPOS);
 
             document.Close();
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return null;
+            }
+
+            return System.IO.File.ReadAllBytes(fullPath);
         }
 
         private void AddTableHeaderRow(PdfPTable table)

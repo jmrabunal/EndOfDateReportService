@@ -115,14 +115,15 @@ namespace EndOfDateReportService.Services
             
         }
 
-        public void PdfGenerator(DateTime date, int branchId)
+        public Task<byte[]> PdfGenerator(DateTime date, int branchId)
         {
 
             var branch = _reportContext.Branches.Include(x => x.Lanes).ThenInclude(l => l.PaymentMethods.Where(pm => pm.ReportDate == new DateTime(date.Year, date.Month, date.Day, date.Hour, date.Minute, date.Second, DateTimeKind.Utc))).FirstOrDefault(p => p.Id == branchId);
             if (branch != null)
             {
-                _pdfService.GenerateBranchPaymentMethodsPdf(branch, date);
+                return _pdfService.GenerateBranchPaymentMethodsPdf(branch, date);
             }
+            return null;
         }
     }
 };

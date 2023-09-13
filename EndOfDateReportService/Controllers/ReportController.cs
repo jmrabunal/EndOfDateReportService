@@ -33,11 +33,12 @@ public class ReportController:ControllerBase
         return Ok();
     }
 
-    [HttpPost()]
-    public IActionResult CreateSummary([FromQuery] DateTime date, [FromQuery] int branchId)
+    [HttpGet("get-summary")]
+    public async Task<IActionResult> CreateSummary([FromQuery] DateTime date, [FromQuery] int branchId)
     {
-        _branchService.PdfGenerator(date, branchId);
-        return Ok();
+        byte[] pdf = await _branchService.PdfGenerator(date, branchId);
+
+        return File(pdf, "application/pdf", date + " summary.pdf");
     }
 }
 
