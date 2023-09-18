@@ -1,6 +1,6 @@
 using AutoMapper;
 using EndOfDateReportService.Domain;
-using EndOfDateReportService.Models;
+using EndOfDateReportService.Models.Out;
 
 namespace EndOfDateReportService;
 

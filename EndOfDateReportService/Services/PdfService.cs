@@ -184,7 +184,7 @@ namespace EndOfDateReportService.Services
             table.AddCell(reportedAmount.ToString("C", currencyFormat));
             table.AddCell(totalVariance.ToString("C", currencyFormat));
         }
-        private async Task<double> ExecuteGSTQuery(DateTime date, int branchId)
+        public async Task<double> ExecuteGSTQuery(DateTime date, int branchId)
         {
             var server = _configuration.GetConnectionString(branchId.ToString());
             var conex = string.Format(connectionString, server); 
@@ -215,7 +215,7 @@ namespace EndOfDateReportService.Services
 
         }
 
-        private async Task<double> ExecuteFEEQuery(DateTime date, Branch branch)
+        public async Task<double> ExecuteFEEQuery(DateTime date, Branch branch)
         {
             var startDate = date.AddHours(00).AddMinutes(00).AddSeconds(00).ToString("yyyy-MM-ddTHH:mm:ss");
             var endDate = date.AddHours(23).AddMinutes(59).AddSeconds(59).ToString("yyyy-MM-ddTHH:mm:ss");

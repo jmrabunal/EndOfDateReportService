@@ -10,6 +10,7 @@ public class ReportContext: DbContext
     {
         ChangeTracker.LazyLoadingEnabled = false;
     }
+    public DbSet<Note> Notes { get; set; }
     public DbSet<Branch> Branches { get; set; }
     public DbSet<Lane> Lanes { get; set; }
     public DbSet<PaymentMethod> PaymentMethods { get; set; }
@@ -32,12 +33,22 @@ public class ReportContext: DbContext
         modelBuilder.Entity<Lane>().HasOne(x => x.Branch).WithMany(x => x.Lanes)
             .HasForeignKey(x => x.BranchId);
 
-        
+
         modelBuilder.Entity<PaymentMethod>().HasOne(x => x.Lane).WithMany(x => x.PaymentMethods)
             .HasForeignKey(x => x.LaneId);
         modelBuilder.Entity<PaymentMethod>().HasIndex(x => new { x.Name, x.LaneId, x.BranchId, x.ReportDate })
             .IsUnique();
         modelBuilder.Entity<PaymentMethod>().Property(x => x.Id).ValueGeneratedOnAdd();
+
+
+        modelBuilder.Entity<Branch>().HasMany<Note>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
+            .IsRequired();
+        modelBuilder.Entity<Note>().HasOne(x => x.Branch).WithMany(x => x.Notes)
+            .HasForeignKey(x => x.BranchId);
+        modelBuilder.Entity<Note>().Property(x => x.Id).ValueGeneratedOnAdd();
+
+
+
 
         modelBuilder.Entity<Branch>().HasData(
             new Branch()

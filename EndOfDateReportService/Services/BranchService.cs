@@ -63,6 +63,14 @@ namespace EndOfDateReportService.Services
                 {
                     var branchIdString = branch.Id.ToString();
                     var branchSection = section.GetSection(branchIdString);
+                   
+                    var NoteFromDb = await _repository.CreateNote(new Note()
+                    {
+                        SummaryNote = "",
+                        CreatedDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc),
+                        BranchId = branch.Id
+                    });
+
                     foreach (var laneKey in branchSection.GetChildren())
                     {
                         var laneValue = laneKey.Value;
@@ -95,8 +103,12 @@ namespace EndOfDateReportService.Services
                 }
 
             }
-
-            return await _repository.Get(new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc));
+            IEnumerable<Branch> returnBranch = await _repository.Get(new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc));
+            //foreach (var branch in returnBranch) {
+            //    branch.EFTPOSFee = await _pdfService.ExecuteFEEQuery(startDate, branch);
+            //    branch.Gst = await _pdfService.ExecuteGSTQuery(startDate, branch.Id);
+            //}
+            return returnBranch;
         }
 
         public async Task UpdatePaymentMethods(IEnumerable<Branch> branches)

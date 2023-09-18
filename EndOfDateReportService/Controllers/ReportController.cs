@@ -1,6 +1,6 @@
 using AutoMapper;
 using EndOfDateReportService.Domain;
-using EndOfDateReportService.Models;
+using EndOfDateReportService.Models.Out;
 using EndOfDateReportService.Services;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -22,8 +22,8 @@ public class ReportController:ControllerBase
     public async Task<IActionResult> GetReport(DateTime startDate, DateTime endDate)
     {
         var result = await _branchService.GenerateReport(startDate, endDate);
-        var mappedResult = _mapper.Map<IEnumerable<BranchModelOut>>(result);
-        return Ok(mappedResult);
+        //var mappedResult = _mapper.Map<IEnumerable<BranchModelOut>>(result);
+        return Ok(result);
     }
 
     [HttpPut()]

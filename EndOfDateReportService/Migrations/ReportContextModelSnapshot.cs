@@ -82,6 +82,30 @@ namespace EndOfDateReportService.Migrations
                     b.ToTable("Lanes");
                 });
 
+            modelBuilder.Entity("EndOfDateReportService.Domain.Note", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SummaryNote")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.ToTable("Notes");
+                });
+
             modelBuilder.Entity("EndOfDateReportService.Domain.PaymentMethod", b =>
                 {
                     b.Property<int>("Id")
@@ -133,6 +157,17 @@ namespace EndOfDateReportService.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("EndOfDateReportService.Domain.Note", b =>
+                {
+                    b.HasOne("EndOfDateReportService.Domain.Branch", "Branch")
+                        .WithMany("Notes")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+                });
+
             modelBuilder.Entity("EndOfDateReportService.Domain.PaymentMethod", b =>
                 {
                     b.HasOne("EndOfDateReportService.Domain.Lane", "Lane")
@@ -147,6 +182,8 @@ namespace EndOfDateReportService.Migrations
             modelBuilder.Entity("EndOfDateReportService.Domain.Branch", b =>
                 {
                     b.Navigation("Lanes");
+
+                    b.Navigation("Notes");
                 });
 
             modelBuilder.Entity("EndOfDateReportService.Domain.Lane", b =>

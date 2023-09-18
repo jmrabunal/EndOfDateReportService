@@ -1,7 +1,11 @@
 using EndOfDateReportService.DataAccess;
 using EndOfDateReportService.Services;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography.X509Certificates;
 
 namespace EndOfDateReportService
 {
@@ -48,10 +52,13 @@ namespace EndOfDateReportService
 
             app.UseCors(builder =>
             {
-                builder.AllowAnyOrigin()
+                builder.WithOrigins(Configuration.GetValue<string>("ip"))
                        .AllowAnyMethod()
-                       .AllowAnyHeader();
+                       .AllowAnyHeader().AllowCredentials();
+
             });
+
+            app.UseCors("AllowSpecificOrigin");
 
             app.UseRouting();
 
