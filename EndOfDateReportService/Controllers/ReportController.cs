@@ -40,5 +40,12 @@ public class ReportController:ControllerBase
 
         return File(pdf, "application/pdf", date + " summary.pdf");
     }
+    
+    [HttpGet("get")]
+    public async Task<IActionResult> CreateSummary([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
+    {
+        await _branchService.ExcelGenerator(fromDate, toDate);
+        return Ok();
+    }
 }
 

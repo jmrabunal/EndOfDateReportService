@@ -16,13 +16,15 @@ namespace EndOfDateReportService.Services
         private Repository _repository;
         private readonly IConfiguration _configuration;
         private PdfService _pdfService;
-        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository, PdfService pdfService)
+        private ExcelService _excelService;
+        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository, PdfService pdfService, ExcelService excelService)
         {
             _configuration = configuration;
             connectionString = configuration.GetConnectionString("DefaultConnection");
             _reportContext = reportContext;
             _repository = repository;
             _pdfService = pdfService;
+            _excelService = excelService;
         }
 
         private async Task<Dictionary<string, decimal>> ExecuteQuery(DateTime startDate, DateTime endDate, int branchId, int stationId) 
@@ -136,6 +138,11 @@ namespace EndOfDateReportService.Services
                 return _pdfService.GenerateBranchPaymentMethodsPdf(branch, date);
             }
             return null;
+        }
+
+        public async Task ExcelGenerator(DateTime fromDate, DateTime toDate)
+        {
+            await _excelService.ExportToExcel(fromDate, toDate);
         }
     }
 };

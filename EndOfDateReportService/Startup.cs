@@ -39,15 +39,19 @@ namespace EndOfDateReportService
             services.AddScoped<Repository>();
             services.AddAutoMapper(typeof(AutoMapper));
             services.AddScoped<PdfService>();
+
+            services.AddScoped<ExcelService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
+                
                 app.UseSwagger();
-                app.UseSwaggerUI(c => { c.SwaggerEndpoint("/swagger/v1/swagger.json", "API de BridgetIt V1"); });
+                app.UseSwaggerUI(c =>
+                {
+                    c.RoutePrefix = "api"; c.SwaggerEndpoint("/swagger/v1/swagger.json", "API de BridgetIt V1"); });
             }
 
             app.UseCors(builder =>
