@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EndOfDateReportService.Migrations
 {
     [DbContext(typeof(ReportContext))]
-    [Migration("20230915050031_nofee")]
-    partial class nofee
+    [Migration("20230925175224_unique2")]
+    partial class unique2
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -103,18 +103,19 @@ namespace EndOfDateReportService.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
+                    b.HasIndex("BranchId")
+                        .IsUnique();
 
                     b.ToTable("Notes");
                 });
 
             modelBuilder.Entity("EndOfDateReportService.Domain.PaymentMethod", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("ActualAmount")
                         .HasColumnType("numeric");
@@ -140,6 +141,9 @@ namespace EndOfDateReportService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Id")
+                        .IsUnique();
+
                     b.HasIndex("LaneId");
 
                     b.HasIndex("Name", "LaneId", "BranchId", "ReportDate")
@@ -162,8 +166,8 @@ namespace EndOfDateReportService.Migrations
             modelBuilder.Entity("EndOfDateReportService.Domain.Note", b =>
                 {
                     b.HasOne("EndOfDateReportService.Domain.Branch", "Branch")
-                        .WithMany("Notes")
-                        .HasForeignKey("BranchId")
+                        .WithOne("Note")
+                        .HasForeignKey("EndOfDateReportService.Domain.Note", "BranchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -185,7 +189,7 @@ namespace EndOfDateReportService.Migrations
                 {
                     b.Navigation("Lanes");
 
-                    b.Navigation("Notes");
+                    b.Navigation("Note");
                 });
 
             modelBuilder.Entity("EndOfDateReportService.Domain.Lane", b =>

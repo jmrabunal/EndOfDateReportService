@@ -139,11 +139,12 @@ namespace EndOfDateReportService.Services
             BaseFont bf = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
             Font font = new Font(bf, 12, Font.NORMAL);
 
-            Paragraph paragraphGST = new Paragraph(new Chunk(gstLine, font));
+            //Paragraph paragraphGST = new Paragraph(new Chunk(gstLine, font));
             Paragraph paragraphEFTPOS = new Paragraph(new Chunk(feeLine, font));
 
-            document.Add(paragraphGST);
+           // document.Add(paragraphGST);
             document.Add(paragraphEFTPOS);
+            
 
             document.Close();
 

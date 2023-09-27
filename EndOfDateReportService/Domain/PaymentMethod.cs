@@ -8,7 +8,7 @@ namespace EndOfDateReportService.Domain;
 public class PaymentMethod
 {
     [Key]
-    public int Id { get; set; }
+    public long Id { get; set; }
     
     public string Name { get; set; }
     public decimal ActualAmount { get; set; }

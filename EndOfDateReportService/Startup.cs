@@ -40,7 +40,7 @@ namespace EndOfDateReportService
             services.AddAutoMapper(typeof(AutoMapper));
             services.AddScoped<PdfService>();
 
-            services.AddScoped<ExcelService>();
+            //services.AddScoped<ExcelService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

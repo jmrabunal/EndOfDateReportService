@@ -6,6 +6,9 @@ using EndOfDateReportService.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.Configuration;
+using EndOfDateReportService.Models.Out;
+using System.Reflection.Metadata.Ecma335;
+using AutoMapper;
 
 namespace EndOfDateReportService.Services
 {
@@ -16,15 +19,17 @@ namespace EndOfDateReportService.Services
         private Repository _repository;
         private readonly IConfiguration _configuration;
         private PdfService _pdfService;
-        private ExcelService _excelService;
-        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository, PdfService pdfService, ExcelService excelService)
+        //private ExcelService _excelService;
+        private readonly IMapper _mapper;
+        public BranchService(IConfiguration configuration, ReportContext reportContext, Repository repository, PdfService pdfService, /*ExcelService excelService,*/ IMapper mapper)
         {
             _configuration = configuration;
             connectionString = configuration.GetConnectionString("DefaultConnection");
             _reportContext = reportContext;
             _repository = repository;
             _pdfService = pdfService;
-            _excelService = excelService;
+            //_excelService = excelService;
+            _mapper = mapper;
         }
 
         private async Task<Dictionary<string, decimal>> ExecuteQuery(DateTime startDate, DateTime endDate, int branchId, int stationId) 
@@ -66,12 +71,12 @@ namespace EndOfDateReportService.Services
                     var branchIdString = branch.Id.ToString();
                     var branchSection = section.GetSection(branchIdString);
                    
-                    var NoteFromDb = await _repository.CreateNote(new Note()
-                    {
-                        SummaryNote = "",
-                        CreatedDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc),
-                        BranchId = branch.Id
-                    });
+                    //var NoteFromDb = await _repository.CreateNote(new Note()
+                    //{
+                    //    SummaryNote = " ",
+                    //    CreatedDate = new DateTime(startDate.Year, startDate.Month, startDate.Day, startDate.Hour, startDate.Minute, startDate.Second, DateTimeKind.Utc),
+                    //    BranchId = branch.Id
+                    //});
 
                     foreach (var laneKey in branchSection.GetChildren())
                     {
@@ -117,6 +122,10 @@ namespace EndOfDateReportService.Services
         {
             foreach (var branch in branches)
             {
+                //if (branch.Note != null)
+                //{
+                //    await _repository.UpdateNote(branch.Note);
+                //}
                 foreach (var lane in branch.Lanes )
                 {
                     foreach (var pm in lane.PaymentMethods)
@@ -140,9 +149,28 @@ namespace EndOfDateReportService.Services
             return null;
         }
 
-        public async Task ExcelGenerator(DateTime fromDate, DateTime toDate)
+        //public async Task ExcelGenerator(DateTime fromDate, DateTime toDate)
+        //{
+        //    await _excelService.ExportToExcel(fromDate, toDate);
+        //}
+
+        public async Task<List<BranchModelOut>> AddFees(IEnumerable<Branch> branches, DateTime date)
         {
-            await _excelService.ExportToExcel(fromDate, toDate);
+            List<BranchModelOut> branchesModelOut = new List<BranchModelOut>(); ;
+            foreach (var branch in branches)
+            {
+                branchesModelOut.Add(
+                    new BranchModelOut() { 
+                        Name = branch.Name,
+                        Id = branch.Id,
+                        Gst = await _pdfService.ExecuteGSTQuery(date, branch.Id),
+                        EFTPOSFee = await _pdfService.ExecuteFEEQuery(date, branch),
+                        Lanes = (ICollection<LaneModelOut>)_mapper.Map<IEnumerable<LaneModelOut>>(branch.Lanes),
+                        Note = branch.Note
+                    });
+            }
+            return branchesModelOut;
         }
+
     }
 };
