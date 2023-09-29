@@ -11,6 +11,10 @@ public class ExcelService
     private readonly string connectionString;
     private readonly IConfiguration _configuration;
     private List<string> suppliers = new List<string>();
+    private Dictionary<string, Tuple<int, int>> suppliersToFromRows;
+    private string commisionSalesSheet = "CommissionSales";
+    private int PRICE_SET_COLUMN = 10;
+    private int COMMISION_RATE_COLUMN = 9;
 
     public ExcelService(IConfiguration configuration)
     {
@@ -495,26 +499,379 @@ public class ExcelService
 
         using (ExcelPackage package = new ExcelPackage(fileInfo))
         {
-
             var dataTable = await ExecuteCommissionQuery(fromDateInclusive, toDateInclusive);
             CreateCommisionSalesSheet(dataTable, package);
 
-            var dataTableSummary = await ExecuteSummaryQuery(fromDateInclusive, toDateInclusive);
-            CreateSummarySheet(dataTableSummary, package, fromDateInclusive);
-
-            var dataTableDraftWorkingOutput = await ExecuteDraftWorkingOutputQuery(fromDateInclusive, toDateInclusive);
-            CreateDraftWorkingOutputSheet(dataTableDraftWorkingOutput, package);
-
             GetSupliers(dataTable);
-            foreach (var supplier in suppliers)
+            CreateDraftWorkingOutputFromSheet(package);
+            CreateSummaryFromDic(package);
+
+            foreach (var supplier in suppliersToFromRows)
             {
-                var supplierDataTable =  await ExecuteSupplierCommisionQuery(supplier, fromDateInclusive, toDateInclusive);
-                CreateSupplierComissionSheet(supplier, supplierDataTable, package);
+                CreateSupplierSheet(supplier, package);
             }
+
             package.Save();
         }
 
     }
+
+    private void CreateSupplierSheet(KeyValuePair<string, Tuple<int, int>> supplier, ExcelPackage package)
+    {
+        var supplierWorksheet = package.Workbook.Worksheets.Add(supplier.Key);
+        var commisionSheet = package.Workbook.Worksheets.FirstOrDefault(x => x.Name == commisionSalesSheet);
+
+        supplierWorksheet.Cells[1, 1].Value = "Supplier";
+        supplierWorksheet.Cells[1, 2].Value = "PLU";
+        supplierWorksheet.Cells[1, 3].Value = "Product";
+        supplierWorksheet.Cells[1, 4].Value = "Rate";
+        supplierWorksheet.Cells[1, 12].Value = "Total";
+        supplierWorksheet.Cells[1, 20].Value = "Total Sales";
+        supplierWorksheet.Cells[1, 21].Value = "Commission";
+        supplierWorksheet.Cells[1, 22].Value = "Net";
+
+        supplierWorksheet.Cells[1, 1].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 2].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 3].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 4].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 12].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 21].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 22].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 20].Style.Font.Bold = true;
+
+        supplierWorksheet.DefaultColWidth = 14;
+
+        //CommissionSalesSheet columns to take data from
+        var branchNameColumn = 3;
+        var productNameColumn = 8;
+        var pluCodeColumn = 6;
+        var commissionRateColumn = 9;
+        int firstDayColumn = 11;
+        int lastDayColumn = 17;
+
+
+        var branchSupplierSheetColumn = 1;
+        var PLUSupplierSheetColumn = 2;
+        var ProductSupplierSheetColumn = 3;
+        var RateSupplierSheetColumn = 4;
+        var supplierAmountLastDayColumn = 11;
+        var supplierTotalAmountColumn = 12;
+        var supplierLastDaySales = 19;
+        var supplierTotalSales = 20;
+        var supplierCommissionSales = 21;
+        var supplierNetSales = 22;
+
+        int startRow = supplier.Value.Item1;
+        int endRow = supplier.Value.Item2;
+        
+
+        int currentRow = 2;
+
+        for (int row = startRow; row <= endRow; row++)
+        {
+            supplierWorksheet.Cells[currentRow, branchSupplierSheetColumn].Value = commisionSheet.Cells[row, branchNameColumn].Value;
+            supplierWorksheet.Column(branchSupplierSheetColumn).Width = 30;
+
+            supplierWorksheet.Cells[currentRow, PLUSupplierSheetColumn].Value = commisionSheet.Cells[row, pluCodeColumn].Value;
+
+            supplierWorksheet.Cells[currentRow, ProductSupplierSheetColumn].Value = commisionSheet.Cells[row, productNameColumn].Value;
+            supplierWorksheet.Column(ProductSupplierSheetColumn).Width = 30;
+
+            var productRateCommissionSheetCell = commisionSheet.Cells[row, commissionRateColumn].Address;
+            supplierWorksheet.Cells[currentRow, commissionRateColumn].Style.Numberformat.Format = "$0.00";
+
+            supplierWorksheet.Cells[currentRow, RateSupplierSheetColumn].Formula = $"{commisionSalesSheet}!{productRateCommissionSheetCell}";
+
+            var dayColumnCount = 5;
+            var daySalesCount = 13;
+            var totalAmountFormula = "";
+            var totalFormula = "";
+            var commissionFormula = "";
+            var netFormula = "";
+
+            for (int col = firstDayColumn; col <= lastDayColumn; col++)
+            {
+                var priceSetCell = commisionSheet.Cells[row, PRICE_SET_COLUMN].Address;
+
+                var dayFormula = "";
+                var cell = commisionSheet.Cells[row, col].Address;
+
+                if (dayColumnCount <= supplierAmountLastDayColumn)
+                {
+                    if (commisionSheet.Cells[row, col].Value != null)
+                    {
+                        supplierWorksheet.Cells[currentRow,dayColumnCount].Formula = $"{commisionSheet}!{cell}";
+                        supplierWorksheet.Cells[1, dayColumnCount].Value = commisionSheet.Cells[1, col].Value;
+                        totalAmountFormula += $"{supplierWorksheet.Cells[currentRow, dayColumnCount].Address}+";
+                        dayFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
+                        dayFormula = dayFormula.TrimEnd('+');
+
+                        supplierWorksheet.Cells[1, daySalesCount].Value = supplierWorksheet.Cells[1, dayColumnCount].Value + " Sales";
+                        supplierWorksheet.Cells[currentRow, daySalesCount].Formula = dayFormula;
+                        supplierWorksheet.Cells[currentRow, daySalesCount].Style.Numberformat.Format = "$0.00";
+                    }
+
+                    dayColumnCount++;
+                }
+                else
+                {
+                    dayColumnCount = 5;
+                }
+
+                var commissionCell = commisionSheet.Cells[row, COMMISION_RATE_COLUMN].Address;
+                totalFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
+                commissionFormula += $"(({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})*({commisionSalesSheet}!{commissionCell}/100))+";
+
+                
+
+                daySalesCount++;
+            }
+            totalAmountFormula = totalAmountFormula.TrimEnd('+');
+            supplierWorksheet.Cells[currentRow, supplierTotalAmountColumn].Formula = totalAmountFormula;
+
+            totalAmountFormula = "";
+
+            totalFormula = totalFormula.TrimEnd('+');
+            commissionFormula = commissionFormula.TrimEnd('+');
+            netFormula = $"({supplierWorksheet.Cells[currentRow, supplierTotalSales].Address} - {supplierWorksheet.Cells[currentRow, supplierCommissionSales].Address})";
+            supplierWorksheet.Cells[currentRow, supplierTotalSales].Formula = totalFormula;
+            supplierWorksheet.Cells[currentRow, supplierCommissionSales].Formula = commissionFormula;
+            supplierWorksheet.Cells[currentRow, supplierNetSales].Formula = netFormula;
+
+            supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "$0.00";
+            supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "$0.00";
+            supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "$0.00";
+
+            currentRow++;
+        }
+
+        int grandTotalRow = currentRow + 1;
+        supplierWorksheet.Cells[grandTotalRow, 1].Value = "Grand Total";
+        supplierWorksheet.Cells[grandTotalRow, 1].Style.Font.Bold = true;
+
+        string totalSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierTotalSales].Address}:{supplierWorksheet.Cells[currentRow, supplierTotalSales].Address})";
+        supplierWorksheet.Cells[grandTotalRow, supplierTotalSales].Formula = totalSumFormula;
+        supplierWorksheet.Cells[grandTotalRow, supplierTotalSales].Style.Font.Bold = true;
+        supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "$0.00";
+
+
+        string commissionSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierCommissionSales].Address}:{supplierWorksheet.Cells[currentRow, supplierCommissionSales].Address})";
+        supplierWorksheet.Cells[grandTotalRow, supplierCommissionSales].Formula = commissionSumFormula;
+        supplierWorksheet.Cells[grandTotalRow, supplierCommissionSales].Style.Font.Bold = true;
+        supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "$0.00";
+
+
+        string netSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierNetSales].Address}:{supplierWorksheet.Cells[currentRow, supplierNetSales].Address})";
+        supplierWorksheet.Cells[grandTotalRow, supplierNetSales].Formula = netSumFormula;
+        supplierWorksheet.Cells[grandTotalRow, supplierNetSales].Style.Font.Bold = true;
+        supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "$0.00";
+
+    }
+
+    private void CreateSummaryFromDic(ExcelPackage package)
+    {
+        var summaryWorksheet = package.Workbook.Worksheets.Add("Summary");
+        var commisionSheet = package.Workbook.Worksheets.FirstOrDefault(x => x.Name == commisionSalesSheet);
+
+        if (commisionSheet?.Dimension != null)
+        {
+            summaryWorksheet.Cells[1, 1].Value = "Supplier";
+            summaryWorksheet.Cells[1, 2].Value = "Total";
+            summaryWorksheet.Cells[1, 3].Value = "Commission";
+            summaryWorksheet.Cells[1, 4].Value = "Net";
+            summaryWorksheet.Cells[1, 1].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 2].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 3].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 4].Style.Font.Bold = true;
+
+            summaryWorksheet.Column(1).Width = 45;
+            summaryWorksheet.Column(2).Width = 15;
+            summaryWorksheet.Column(3).Width = 15;
+            summaryWorksheet.Column(4).Width = 15;
+            summaryWorksheet.Column(5).Width = 15;
+
+            int currentRow = 2;
+            int TotalColumn = 2;
+            int CommissionColumn = 3;
+            int NetColumn = 4;
+            int firstDayColumn = 11;
+            int lastDayColumn = 17;
+
+            foreach (var supplier in suppliersToFromRows.Keys)
+            {
+
+                var rowRange = suppliersToFromRows[supplier];
+                int startRow = rowRange.Item1;
+                int endRow = rowRange.Item2;
+                var totalFormula = "";
+                var commissionFormula = "";
+                var netFormula = "";
+
+                summaryWorksheet.Cells[currentRow, 1].Value = supplier;
+                for (int col = firstDayColumn; col <= lastDayColumn; col++)
+                {
+                    for (int row = startRow; row <= endRow; row++)
+                    {
+
+                        if (commisionSheet.Cells[row, col].Value != null)
+                        {
+                            var cell = commisionSheet.Cells[row, col].Address;
+                            var priceSetCell = commisionSheet.Cells[row, PRICE_SET_COLUMN].Address;
+                            var commissionCell = commisionSheet.Cells[row, COMMISION_RATE_COLUMN].Address;
+                            totalFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
+                            commissionFormula += $"(({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})*({commisionSalesSheet}!{commissionCell}/100))+";
+                        }
+                     
+                    }
+                }
+                totalFormula = totalFormula.TrimEnd('+');
+                commissionFormula = commissionFormula.TrimEnd('+');
+                netFormula = $"({summaryWorksheet.Cells[currentRow, TotalColumn].Address} - {summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
+                summaryWorksheet.Cells[currentRow, TotalColumn].Formula = totalFormula;
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Formula = commissionFormula;
+                summaryWorksheet.Cells[currentRow, NetColumn].Formula = netFormula;
+
+                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+
+
+                currentRow++;
+            }
+            int grandTotalRow = currentRow + 1; 
+            summaryWorksheet.Cells[grandTotalRow, 1].Value = "Grand Total";
+            summaryWorksheet.Cells[grandTotalRow, 1].Style.Font.Bold = true;
+
+            string totalSumFormula = $"SUM({summaryWorksheet.Cells[2, TotalColumn].Address}:{summaryWorksheet.Cells[currentRow, TotalColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, TotalColumn].Formula = totalSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, TotalColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+
+
+            string commissionSumFormula = $"SUM({summaryWorksheet.Cells[2, CommissionColumn].Address}:{summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Formula = commissionSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+
+
+            string netSumFormula = $"SUM({summaryWorksheet.Cells[2, NetColumn].Address}:{summaryWorksheet.Cells[currentRow, NetColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, NetColumn].Formula = netSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, NetColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+
+        }
+    }
+
+    private void CreateDraftWorkingOutputFromSheet(ExcelPackage package)
+    {
+        var summaryWorksheet = package.Workbook.Worksheets.Add("Draft Working Output");
+        var commisionSheet = package.Workbook.Worksheets.FirstOrDefault(x => x.Name == commisionSalesSheet);
+        var supplierCount = suppliersToFromRows.Keys.Count();
+        if (commisionSheet?.Dimension != null)
+        {
+            int currentRow = 2;
+            int TotalColumn = 9;
+            int CommissionColumn = 10;
+            int NetColumn = 11;
+            int firstDayColumn = 11;
+            int lastDayColumn = 17;
+
+            summaryWorksheet.Column(1).Width = 40;
+            summaryWorksheet.Column(9).Width = 25;
+            summaryWorksheet.Column(10).Width = 25;
+            summaryWorksheet.Column(11).Width = 25;
+
+            summaryWorksheet.Cells[1, 1].Value = "Supplier";
+            summaryWorksheet.Cells[1, 9].Value = "Total";
+            summaryWorksheet.Cells[1, 10].Value = "Commission";
+            summaryWorksheet.Cells[1, 11].Value = "Net";
+
+            summaryWorksheet.Cells[1, 9].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 10].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 11].Style.Font.Bold = true;
+            summaryWorksheet.Cells[1, 1].Style.Font.Bold = true;
+
+            foreach (var supplier in suppliersToFromRows.Keys)
+            {
+                var rowRange = suppliersToFromRows[supplier];
+                int startRow = rowRange.Item1;
+                int endRow = rowRange.Item2;
+                var totalFormula = "";
+                var commissionFormula = "";
+                var netFormula = "";
+
+                int dayColumnCount = 2;
+                summaryWorksheet.Cells[currentRow, 1].Value = supplier;
+                for (int col = firstDayColumn; col <= lastDayColumn; col++)
+                {
+                    var dayFormula = "";
+                    var dayCellAddress = commisionSheet.Cells[1, col].Address;
+                    summaryWorksheet.Cells[1, dayColumnCount].Formula = $"{commisionSalesSheet}!{dayCellAddress}";
+                    summaryWorksheet.Column(dayColumnCount).Width = 25;
+                    summaryWorksheet.Cells[1, dayColumnCount].Style.Font.Bold = true;
+
+                    for (int row = startRow; row <= endRow; row++)
+                    {
+
+                        if (commisionSheet.Cells[row, col].Value != null)
+                        {
+                            var cell = commisionSheet.Cells[row, col].Address;
+                            var priceSetCell = commisionSheet.Cells[row, PRICE_SET_COLUMN].Address;
+                            var commissionCell = commisionSheet.Cells[row, COMMISION_RATE_COLUMN].Address;
+                            totalFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
+                            commissionFormula += $"(({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})*({commisionSalesSheet}!{commissionCell}/100))+";
+
+
+                            dayFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
+                        }
+
+                    }
+                    dayFormula = dayFormula.TrimEnd('+');
+                    summaryWorksheet.Cells[currentRow, dayColumnCount].Formula = dayFormula;
+                    summaryWorksheet.Cells[currentRow, dayColumnCount].Style.Numberformat.Format = "$0.00";
+
+                    dayColumnCount++;
+                }
+                totalFormula = totalFormula.TrimEnd('+');
+                commissionFormula = commissionFormula.TrimEnd('+');
+                netFormula = $"({summaryWorksheet.Cells[currentRow, TotalColumn].Address} - {summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
+                summaryWorksheet.Cells[currentRow, TotalColumn].Formula = totalFormula;
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Formula = commissionFormula;
+                summaryWorksheet.Cells[currentRow, NetColumn].Formula = netFormula;
+
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+
+
+                currentRow++;
+            }
+            int grandTotalRow = currentRow + 1;
+            summaryWorksheet.Cells[grandTotalRow, 1].Value = "Grand Total";
+            summaryWorksheet.Cells[grandTotalRow, 1].Style.Font.Bold = true;
+
+            string totalSumFormula = $"SUM({summaryWorksheet.Cells[2, TotalColumn].Address}:{summaryWorksheet.Cells[currentRow, TotalColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, TotalColumn].Formula = totalSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, TotalColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+
+
+            string commissionSumFormula = $"SUM({summaryWorksheet.Cells[2, CommissionColumn].Address}:{summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Formula = commissionSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+
+
+            string netSumFormula = $"SUM({summaryWorksheet.Cells[2, NetColumn].Address}:{summaryWorksheet.Cells[currentRow, NetColumn].Address})";
+            summaryWorksheet.Cells[grandTotalRow, NetColumn].Formula = netSumFormula;
+            summaryWorksheet.Cells[grandTotalRow, NetColumn].Style.Font.Bold = true;
+            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+
+
+        }
+    }
+
+
 
     private void CreateDraftWorkingOutputSheet(DataTable dataTable, ExcelPackage package)
     {
@@ -623,20 +980,47 @@ public class ExcelService
 
     private void GetSupliers(DataTable dataTable)
     {
+        suppliersToFromRows = new Dictionary<string, Tuple<int, int>>();
+        string currentSupplier = null;
+        int startRow = -1;
+
         for (int i = 0; i < dataTable.Columns.Count; i++)
         {
-            if (dataTable.Columns[i].ColumnName == "Supplier")
+            if (dataTable.Columns[i].ColumnName == "LastName")
             {
-                for (int row = 0; row < dataTable.Rows.Count; row++)
+                for (int row = 2; row < dataTable.Rows.Count; row++)
                 {
-                    if (!suppliers.Contains(dataTable.Rows[row][i]))
+                    string supplier = dataTable.Rows[row][i].ToString();
+
+                    if (currentSupplier == null)
                     {
-                        suppliers.Add(dataTable.Rows[row][i].ToString());
+                        currentSupplier = supplier;
+                        startRow = row; // Start on the next row (1-based index)
                     }
+                    else if (supplier != currentSupplier)
+                    {
+                        // Add the data range for the previous supplier
+                        suppliersToFromRows.Add(currentSupplier, Tuple.Create(startRow, row + 1));
+
+                        currentSupplier = supplier;
+                        startRow = row + 2; // Start on the next row (1-based index)
+                    }
+
+                    if (!suppliers.Contains(supplier))
+                    {
+                        suppliers.Add(supplier);
+                    }
+                }
+
+                if (currentSupplier != null)
+                {
+                    // Add the data range for the last supplier
+                    suppliersToFromRows.Add(currentSupplier, Tuple.Create(startRow, dataTable.Rows.Count - 1));
                 }
             }
         }
     }
+
 
     public void CreateSupplierComissionSheet(string supplier, DataTable dataTable, ExcelPackage package)
     {
