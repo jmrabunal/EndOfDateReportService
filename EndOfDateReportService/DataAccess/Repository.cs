@@ -16,7 +16,6 @@ public class Repository
     public async Task<IEnumerable<Branch>> Get(DateTime reportDate)
     {
         return await context.Branches
-            .Include(branch => branch.Notes.Where(n => n.CreatedDate == reportDate))
             .Include(branch => branch.Lanes)
             .ThenInclude(lane => lane.PaymentMethods.Where(pm => pm.ReportDate == reportDate))
             .ToListAsync(); 
@@ -24,6 +23,10 @@ public class Repository
 
     public async Task CreatePaymentMethodReport(PaymentMethod paymentMethod)
     {
+       var id = await context.PaymentMethods.OrderByDescending(e => e.Id)
+                                   .Select(e => e.Id)
+                                   .FirstOrDefaultAsync();   
+        paymentMethod.Id = id + 1;
         await context.PaymentMethods.AddAsync(paymentMethod);
         await context.SaveChangesAsync();
 
@@ -72,18 +75,18 @@ public class Repository
             return paymentMethod;
         }
     }
-   /* public async Task<Note> UpdateNote(PaymentMethod paymentMethod)
+    public async Task<Note> UpdateNote(Note note)
     {
         try
         {
-            var pm = context.Notes.Update(paymentMethod);
+            var nt = context.Notes.Update(note);
             await context.SaveChangesAsync();
-            return pm.Entity;
+            return note;
         }
         catch (Exception ex)
         {
             var e = ex.Message;
-            return paymentMethod;
+            return note;
         }
-    }*/
+    }
 }

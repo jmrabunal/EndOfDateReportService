@@ -11,7 +11,6 @@ public class AutoMapper: Profile
         CreateMap<Branch, BranchModelOut>();
         CreateMap<Lane, LaneModelOut>();
         CreateMap<PaymentMethod, PaymentMethodModelOut>();
-
     }
     
     

@@ -39,13 +39,7 @@ public class ReportContext: DbContext
         modelBuilder.Entity<PaymentMethod>().HasIndex(x => new { x.Name, x.LaneId, x.BranchId, x.ReportDate })
             .IsUnique();
         modelBuilder.Entity<PaymentMethod>().Property(x => x.Id).ValueGeneratedOnAdd();
-
-
-        modelBuilder.Entity<Branch>().HasMany<Note>().WithOne(x => x.Branch).HasForeignKey(x => x.BranchId)
-            .IsRequired();
-        modelBuilder.Entity<Note>().HasOne(x => x.Branch).WithMany(x => x.Notes)
-            .HasForeignKey(x => x.BranchId);
-        modelBuilder.Entity<Note>().Property(x => x.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<PaymentMethod>().HasKey(x => x.Id);
 
 
 
