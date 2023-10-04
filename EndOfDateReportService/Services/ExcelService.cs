@@ -31,99 +31,94 @@ public class ExcelService
             await connection.OpenAsync();
 
             string createViewScript = @"
-        -- CREATE VIEW
-        IF OBJECT_ID('dbo.vw_ListCommission', 'V') IS NULL
-        BEGIN
-            EXEC('
-                CREATE VIEW dbo.vw_ListCommission AS
-                SELECT
-                    CONVERT(varchar(10), TH.Logged, 120) AS Date, -- Format date as yyyy-MM-dd
-                    B.Name AS Branch,
-                    I.UPC,
-                    I.SKU,
-                    I.Description,
-                    I.Supplier,
-                    C.LastName,
-                    I.Field_Integer AS [Commission Rate],
-                    TL.PriceSet,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 2 THEN TL.Quantity ELSE 0 END) AS MON_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 3 THEN TL.Quantity ELSE 0 END) AS TUE_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 4 THEN TL.Quantity ELSE 0 END) AS WED_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 5 THEN TL.Quantity ELSE 0 END) AS THU_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 6 THEN TL.Quantity ELSE 0 END) AS FRI_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 7 THEN TL.Quantity ELSE 0 END) AS SAT_QTY,
-                    SUM(CASE WHEN DATEPART(dw, TH.Logged) = 1 THEN TL.Quantity ELSE 0 END) AS SUN_QTY
-                FROM
-                    translines AS TL
-                JOIN
-                    Items AS I ON TL.UPC = I.UPC
-                JOIN
-                    Branches B ON TL.Branch = B.id
-                JOIN
-                    Customers AS C ON I.Supplier = C.Code
-                JOIN
-                    TransHeaders AS TH ON TL.Branch = TH.Branch
-                                     AND TL.TransNo = TH.TransNo
-                                     AND TL.Station = TH.Station
-                WHERE
-                    I.Field_Integer is not null
-                GROUP BY
-                    CONVERT(varchar(10), TH.Logged, 120), -- Format date as yyyy-MM-dd
-                    B.Name,
-                    I.UPC,
-                    I.SKU,
-                    I.Description,
-                    I.Supplier,
-                    C.LastName,
-                    I.Field_Integer,
-                    TL.PriceSet;
-            ');
-        END;
-    ";
+    -- CREATE OR REPLACE VIEW
+    IF OBJECT_ID('dbo.vw_ListCommissionExcel', 'V') IS NOT NULL
+    BEGIN
+        DROP VIEW dbo.vw_ListCommissionExcel;
+    END
+
+    EXEC('
+        CREATE VIEW dbo.vw_ListCommissionExcel AS
+        SELECT
+            CONVERT(varchar(10), TH.Logged, 120) AS Date, -- Format date as yyyy-MM-dd
+            B.Name AS Branch,
+            I.UPC,
+            I.SKU,
+            I.Description,
+            I.Supplier,
+            C.LastName,
+            I.Field_Integer AS [Commission Rate],
+            TL.PriceSet,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 2 THEN TL.Quantity ELSE 0 END) AS MON_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 3 THEN TL.Quantity ELSE 0 END) AS TUE_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 4 THEN TL.Quantity ELSE 0 END) AS WED_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 5 THEN TL.Quantity ELSE 0 END) AS THU_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 6 THEN TL.Quantity ELSE 0 END) AS FRI_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 7 THEN TL.Quantity ELSE 0 END) AS SAT_QTY,
+            SUM(CASE WHEN DATEPART(dw, TH.Logged) = 1 THEN TL.Quantity ELSE 0 END) AS SUN_QTY
+        FROM
+            translines AS TL
+        JOIN
+            Items AS I ON TL.UPC = I.UPC
+        JOIN
+            Branches B ON TL.Branch = B.id
+        JOIN
+            Customers AS C ON I.Supplier = C.Code
+        JOIN
+            TransHeaders AS TH ON TL.Branch = TH.Branch
+                             AND TL.TransNo = TH.TransNo
+                             AND TL.Station = TH.Station
+        WHERE
+            I.Field_Integer is not null
+        GROUP BY
+            CONVERT(varchar(10), TH.Logged, 120), -- Format date as yyyy-MM-dd
+            B.Name,
+            I.UPC,
+            I.SKU,
+            I.Description,
+            I.Supplier,
+            C.LastName,
+            I.Field_Integer,
+            TL.PriceSet;
+    ');
+";
 
             string createProcedureScript = @"
-    -- CREATE PROCEDURE
-    IF OBJECT_ID('dbo.sp_SupplierCommission', 'P') IS NULL
+    -- CREATE OR REPLACE PROCEDURE
+    IF OBJECT_ID('dbo.sp_ListCommissionExcel', 'P') IS NOT NULL
     BEGIN
-        EXEC('
-            CREATE PROCEDURE dbo.sp_SupplierCommission
-                @SupplierCode VARCHAR(20),
-                @FromDateInclusive DATE,
-                @ToDateInclusive DATE
-            AS
-            BEGIN
-                SELECT
-                    [Last Name],
-                    Branch,
-                    UPC,
-                    Description,
-                    dbo.vw_SupplierCommission.[Commission Rate] AS [Commission Rate], -- Specify the column name
-                    SUM(MON_QTY) AS ''Monday'',
-                    SUM(TUE_QTY) AS ''Tuesday'',
-                    SUM(WED_QTY) AS ''Wednesday'',
-                    SUM(THU_QTY) AS ''Thursday'',
-                    SUM(FRI_QTY) AS ''Friday'',
-                    SUM(SAT_QTY) AS ''Saturday'',
-                    SUM(SUN_QTY) AS ''Sunday''
-                FROM
-                    dbo.vw_SupplierCommission
-                WHERE
-                    [Date] BETWEEN @FromDateInclusive AND @ToDateInclusive
-                    AND UPC IN (SELECT UPC FROM Items WHERE Supplier = @SupplierCode)
-                GROUP BY
-                    [Last Name],
-                    Branch,
-                    UPC,
-                    Description,
-                    dbo.vw_SupplierCommission.[Commission Rate] -- Specify the table alias
-                ORDER BY
-                    Branch,
-                    Description,
-                    dbo.vw_SupplierCommission.[Commission Rate]; -- Specify the table alias
-            END;
-        ');
-    END;
+        DROP PROCEDURE dbo.sp_ListCommissionExcel;
+    END
+
+    EXEC('
+        CREATE PROCEDURE dbo.sp_ListCommissionExcel
+            @FromDateInclusive DATE,
+            @ToDateInclusive DATE
+        AS
+        BEGIN
+            SELECT
+               @FromDateInclusive as [Period From], @ToDateInclusive as [Period To], Branch ,Supplier,LastName ,UPC, SKU, Description,[Commission Rate], PriceSet,
+                SUM(MON_QTY) AS ''Monday'',
+                SUM(TUE_QTY) AS ''Tuesday'',
+                SUM(WED_QTY) AS ''Wednesday'',
+                SUM(THU_QTY) AS ''Thursday'',
+                SUM(FRI_QTY) AS ''Friday'',
+                SUM(SAT_QTY) AS ''Saturday'',
+                SUM(SUN_QTY) AS ''Sunday''
+            FROM
+                dbo.vw_ListCommissionExcel
+            WHERE
+                [Date] BETWEEN @FromDateInclusive AND @ToDateInclusive
+           group by Branch,Supplier,LastName ,UPC, SKU, Description,[Commission Rate], PriceSet
+
+            ORDER BY
+                LastName ASC,
+                Branch ASC,
+                Description ASC;
+        END;
+    ');
 ";
+
 
 
             string combinedScript = createViewScript + createProcedureScript;
@@ -132,7 +127,7 @@ public class ExcelService
             {
                 await command.ExecuteNonQueryAsync();
 
-                using (SqlCommand spCommand = new SqlCommand("dbo.sp_ListCommission", connection))
+                using (SqlCommand spCommand = new SqlCommand("dbo.sp_ListCommissionExcel", connection))
                 {
                     spCommand.CommandType = CommandType.StoredProcedure;
                     spCommand.Parameters.AddWithValue("@FromDateInclusive", fromDateInclusive);
@@ -142,7 +137,6 @@ public class ExcelService
                     {
                         DataTable dataTable = new DataTable();
                         await Task.Run(() => adapter.Fill(dataTable));
-                        dataTable.Columns["Commision Rate"].ColumnName = "Commission Rate";
 
                         return dataTable;
                     }
@@ -488,7 +482,7 @@ public class ExcelService
         string currentDirectory = Directory.GetCurrentDirectory() + "//" + path.Value;
 
         var dateFormatted = fromDateInclusive.Date.ToString("yyyy-MM-dd").Replace("/", "-");
-        string filename = $"CommissionSales - {dateFormatted}.xlsm";
+        string filename = $"CommissionSales - {dateFormatted}.xlsx";
         string fullPath = Path.Combine(currentDirectory, filename);
         FileInfo fileInfo = new FileInfo(fullPath);
 
@@ -525,19 +519,21 @@ public class ExcelService
         supplierWorksheet.Cells[1, 2].Value = "PLU";
         supplierWorksheet.Cells[1, 3].Value = "Product";
         supplierWorksheet.Cells[1, 4].Value = "Rate";
+        supplierWorksheet.Cells[1, 5].Value = "Price";
         supplierWorksheet.Cells[1, 12].Value = "Total";
-        supplierWorksheet.Cells[1, 20].Value = "Total Sales";
-        supplierWorksheet.Cells[1, 21].Value = "Commission";
-        supplierWorksheet.Cells[1, 22].Value = "Net";
+        supplierWorksheet.Cells[1, 22].Value = "Total Sales";
+        supplierWorksheet.Cells[1, 23].Value = "Commission";
+        supplierWorksheet.Cells[1, 21].Value = "Net";
 
         supplierWorksheet.Cells[1, 1].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 2].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 3].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 4].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 5].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 12].Style.Font.Bold = true;
-        supplierWorksheet.Cells[1, 21].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 23].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 22].Style.Font.Bold = true;
-        supplierWorksheet.Cells[1, 20].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 21].Style.Font.Bold = true;
 
         supplierWorksheet.DefaultColWidth = 14;
 
@@ -546,6 +542,7 @@ public class ExcelService
         var productNameColumn = 8;
         var pluCodeColumn = 6;
         var commissionRateColumn = 9;
+        var priceSetColumn = 10;
         int firstDayColumn = 11;
         int lastDayColumn = 17;
 
@@ -554,16 +551,16 @@ public class ExcelService
         var PLUSupplierSheetColumn = 2;
         var ProductSupplierSheetColumn = 3;
         var RateSupplierSheetColumn = 4;
-        var supplierAmountLastDayColumn = 11;
-        var supplierTotalAmountColumn = 12;
-        var supplierLastDaySales = 19;
-        var supplierTotalSales = 20;
-        var supplierCommissionSales = 21;
-        var supplierNetSales = 22;
+        var priceSupplierSheetColumn = 5;
+        var supplierAmountLastDayColumn = 12;
+        var supplierTotalAmountColumn = 13;
+        var supplierTotalSales = 21;
+        var supplierCommissionSales = 22;
+        var supplierNetSales = 23;
 
         int startRow = supplier.Value.Item1;
         int endRow = supplier.Value.Item2;
-        
+
 
         int currentRow = 2;
 
@@ -578,12 +575,13 @@ public class ExcelService
             supplierWorksheet.Column(ProductSupplierSheetColumn).Width = 30;
 
             var productRateCommissionSheetCell = commisionSheet.Cells[row, commissionRateColumn].Address;
-            supplierWorksheet.Cells[currentRow, commissionRateColumn].Style.Numberformat.Format = "$0.00";
-
             supplierWorksheet.Cells[currentRow, RateSupplierSheetColumn].Formula = $"{commisionSalesSheet}!{productRateCommissionSheetCell}";
 
-            var dayColumnCount = 5;
-            var daySalesCount = 13;
+            var priceCommissionSheetCell = commisionSheet.Cells[row, priceSetColumn].Address;
+            supplierWorksheet.Cells[currentRow, priceSupplierSheetColumn].Formula = $"{commisionSalesSheet}!{priceCommissionSheetCell}";
+
+            var dayColumnCount = 6;
+            var daySalesCount = 14;
             var totalAmountFormula = "";
             var totalFormula = "";
             var commissionFormula = "";
@@ -600,7 +598,7 @@ public class ExcelService
                 {
                     if (commisionSheet.Cells[row, col].Value != null)
                     {
-                        supplierWorksheet.Cells[currentRow,dayColumnCount].Formula = $"{commisionSheet}!{cell}";
+                        supplierWorksheet.Cells[currentRow, dayColumnCount].Formula = $"{commisionSheet}!{cell}";
                         supplierWorksheet.Cells[1, dayColumnCount].Value = commisionSheet.Cells[1, col].Value;
                         totalAmountFormula += $"{supplierWorksheet.Cells[currentRow, dayColumnCount].Address}+";
                         dayFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
@@ -608,7 +606,7 @@ public class ExcelService
 
                         supplierWorksheet.Cells[1, daySalesCount].Value = supplierWorksheet.Cells[1, dayColumnCount].Value + " Sales";
                         supplierWorksheet.Cells[currentRow, daySalesCount].Formula = dayFormula;
-                        supplierWorksheet.Cells[currentRow, daySalesCount].Style.Numberformat.Format = "$0.00";
+                        supplierWorksheet.Cells[currentRow, daySalesCount].Style.Numberformat.Format = "[$NZD] #,##0.00";
                     }
 
                     dayColumnCount++;
@@ -622,7 +620,7 @@ public class ExcelService
                 totalFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
                 commissionFormula += $"(({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})*({commisionSalesSheet}!{commissionCell}/100))+";
 
-                
+
 
                 daySalesCount++;
             }
@@ -638,9 +636,9 @@ public class ExcelService
             supplierWorksheet.Cells[currentRow, supplierCommissionSales].Formula = commissionFormula;
             supplierWorksheet.Cells[currentRow, supplierNetSales].Formula = netFormula;
 
-            supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "$0.00";
-            supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "$0.00";
-            supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "$0.00";
+            supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
+            supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
+            supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
             currentRow++;
         }
@@ -652,19 +650,19 @@ public class ExcelService
         string totalSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierTotalSales].Address}:{supplierWorksheet.Cells[currentRow, supplierTotalSales].Address})";
         supplierWorksheet.Cells[grandTotalRow, supplierTotalSales].Formula = totalSumFormula;
         supplierWorksheet.Cells[grandTotalRow, supplierTotalSales].Style.Font.Bold = true;
-        supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "$0.00";
+        supplierWorksheet.Cells[currentRow, supplierTotalSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
         string commissionSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierCommissionSales].Address}:{supplierWorksheet.Cells[currentRow, supplierCommissionSales].Address})";
         supplierWorksheet.Cells[grandTotalRow, supplierCommissionSales].Formula = commissionSumFormula;
         supplierWorksheet.Cells[grandTotalRow, supplierCommissionSales].Style.Font.Bold = true;
-        supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "$0.00";
+        supplierWorksheet.Cells[currentRow, supplierCommissionSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
         string netSumFormula = $"SUM({supplierWorksheet.Cells[2, supplierNetSales].Address}:{supplierWorksheet.Cells[currentRow, supplierNetSales].Address})";
         supplierWorksheet.Cells[grandTotalRow, supplierNetSales].Formula = netSumFormula;
         supplierWorksheet.Cells[grandTotalRow, supplierNetSales].Style.Font.Bold = true;
-        supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "$0.00";
+        supplierWorksheet.Cells[currentRow, supplierNetSales].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
     }
 
@@ -721,7 +719,7 @@ public class ExcelService
                             totalFormula += $"({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})+";
                             commissionFormula += $"(({commisionSalesSheet}!{cell}*{commisionSalesSheet}!{priceSetCell})*({commisionSalesSheet}!{commissionCell}/100))+";
                         }
-                     
+
                     }
                 }
                 totalFormula = totalFormula.TrimEnd('+');
@@ -731,33 +729,33 @@ public class ExcelService
                 summaryWorksheet.Cells[currentRow, CommissionColumn].Formula = commissionFormula;
                 summaryWorksheet.Cells[currentRow, NetColumn].Formula = netFormula;
 
-                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
-                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
-                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
+                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
                 currentRow++;
             }
-            int grandTotalRow = currentRow + 1; 
+            int grandTotalRow = currentRow + 1;
             summaryWorksheet.Cells[grandTotalRow, 1].Value = "Grand Total";
             summaryWorksheet.Cells[grandTotalRow, 1].Style.Font.Bold = true;
 
             string totalSumFormula = $"SUM({summaryWorksheet.Cells[2, TotalColumn].Address}:{summaryWorksheet.Cells[currentRow, TotalColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, TotalColumn].Formula = totalSumFormula;
             summaryWorksheet.Cells[grandTotalRow, TotalColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
             string commissionSumFormula = $"SUM({summaryWorksheet.Cells[2, CommissionColumn].Address}:{summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Formula = commissionSumFormula;
             summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
             string netSumFormula = $"SUM({summaryWorksheet.Cells[2, NetColumn].Address}:{summaryWorksheet.Cells[currentRow, NetColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, NetColumn].Formula = netSumFormula;
             summaryWorksheet.Cells[grandTotalRow, NetColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
         }
     }
@@ -828,7 +826,7 @@ public class ExcelService
                     }
                     dayFormula = dayFormula.TrimEnd('+');
                     summaryWorksheet.Cells[currentRow, dayColumnCount].Formula = dayFormula;
-                    summaryWorksheet.Cells[currentRow, dayColumnCount].Style.Numberformat.Format = "$0.00";
+                    summaryWorksheet.Cells[currentRow, dayColumnCount].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
                     dayColumnCount++;
                 }
@@ -839,9 +837,9 @@ public class ExcelService
                 summaryWorksheet.Cells[currentRow, CommissionColumn].Formula = commissionFormula;
                 summaryWorksheet.Cells[currentRow, NetColumn].Formula = netFormula;
 
-                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
-                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
-                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+                summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
+                summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
+                summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
                 currentRow++;
@@ -853,19 +851,19 @@ public class ExcelService
             string totalSumFormula = $"SUM({summaryWorksheet.Cells[2, TotalColumn].Address}:{summaryWorksheet.Cells[currentRow, TotalColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, TotalColumn].Formula = totalSumFormula;
             summaryWorksheet.Cells[grandTotalRow, TotalColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, TotalColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
             string commissionSumFormula = $"SUM({summaryWorksheet.Cells[2, CommissionColumn].Address}:{summaryWorksheet.Cells[currentRow, CommissionColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Formula = commissionSumFormula;
             summaryWorksheet.Cells[grandTotalRow, CommissionColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, CommissionColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
             string netSumFormula = $"SUM({summaryWorksheet.Cells[2, NetColumn].Address}:{summaryWorksheet.Cells[currentRow, NetColumn].Address})";
             summaryWorksheet.Cells[grandTotalRow, NetColumn].Formula = netSumFormula;
             summaryWorksheet.Cells[grandTotalRow, NetColumn].Style.Font.Bold = true;
-            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "$0.00";
+            summaryWorksheet.Cells[currentRow, NetColumn].Style.Numberformat.Format = "[$NZD] #,##0.00";
 
 
         }
@@ -876,27 +874,27 @@ public class ExcelService
         suppliersToFromRows = new Dictionary<string, Tuple<int, int>>();
         string currentSupplier = null;
         int startRow = -1;
+        var row = 2;
 
         for (int i = 0; i < dataTable.Columns.Count; i++)
         {
             if (dataTable.Columns[i].ColumnName == "LastName")
             {
-                for (int row = 2; row < dataTable.Rows.Count; row++)
+                for (row = 2; row < dataTable.Rows.Count; row++)
                 {
                     string supplier = dataTable.Rows[row][i].ToString();
 
                     if (currentSupplier == null)
                     {
                         currentSupplier = supplier;
-                        startRow = row; // Start on the next row (1-based index)
+                        startRow = row;
                     }
                     else if (supplier != currentSupplier)
                     {
-                        // Add the data range for the previous supplier
                         suppliersToFromRows.Add(currentSupplier, Tuple.Create(startRow, row + 1));
 
                         currentSupplier = supplier;
-                        startRow = row + 2; // Start on the next row (1-based index)
+                        startRow = row + 2;
                     }
 
                     if (!suppliers.Contains(supplier))
@@ -907,8 +905,7 @@ public class ExcelService
 
                 if (currentSupplier != null)
                 {
-                    // Add the data range for the last supplier
-                    suppliersToFromRows.Add(currentSupplier, Tuple.Create(startRow, dataTable.Rows.Count - 1));
+                    suppliersToFromRows.Add(currentSupplier, Tuple.Create(startRow, row + 1));
                 }
             }
         }
@@ -933,11 +930,11 @@ public class ExcelService
                 for (int row = 0; row < dataTable.Rows.Count; row++)
                 {
                     var cell = worksheet.Cells[row + 2, i + 1];
-                    cell.Style.Numberformat.Format = "MM/dd/yy";
+                    cell.Style.Numberformat.Format = "dd/MM/yy";
 
                     if (DateTime.TryParse(dataTable.Rows[row][i].ToString(), out DateTime dateValue))
                     {
-                        cell.Value = dateValue.ToString("MM/dd/yy");
+                        cell.Value = dateValue.ToString("dd/MM/yy");
                     }
                     else
                     {
@@ -961,7 +958,7 @@ public class ExcelService
                 for (int row = 0; row < dataTable.Rows.Count; row++)
                 {
                     var cell = worksheet.Cells[row + 2, i + 1];
-                    cell.Style.Numberformat.Format = "$0.00";
+                    cell.Style.Numberformat.Format = "[$NZD] #,##0.00";
                     cell.Value = dataTable.Rows[row][i];
                 }
             }
@@ -970,7 +967,7 @@ public class ExcelService
                 for (int row = 0; row < dataTable.Rows.Count; row++)
                 {
                     var cell = worksheet.Cells[row + 2, i + 1];
-                    cell.Style.Numberformat.Format = "#,##0.000";
+                    cell.Style.Numberformat.Format = "#,##0";
                     cell.Value = dataTable.Rows[row][i];
                 }
             }
