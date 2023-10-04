@@ -515,29 +515,28 @@ public class ExcelService
         var supplierWorksheet = package.Workbook.Worksheets.Add(supplier.Key);
         var commisionSheet = package.Workbook.Worksheets.FirstOrDefault(x => x.Name == commisionSalesSheet);
 
-        supplierWorksheet.Cells[1, 1].Value = "Supplier";
+        supplierWorksheet.Cells[1, 1].Value = "Branch";
         supplierWorksheet.Cells[1, 2].Value = "PLU";
         supplierWorksheet.Cells[1, 3].Value = "Product";
         supplierWorksheet.Cells[1, 4].Value = "Rate";
         supplierWorksheet.Cells[1, 5].Value = "Price";
-        supplierWorksheet.Cells[1, 12].Value = "Total";
-        supplierWorksheet.Cells[1, 22].Value = "Total Sales";
-        supplierWorksheet.Cells[1, 23].Value = "Commission";
-        supplierWorksheet.Cells[1, 21].Value = "Net";
+        supplierWorksheet.Cells[1, 13].Value = "Total";
+        supplierWorksheet.Cells[1, 21].Value = "Total Sales";
+        supplierWorksheet.Cells[1, 22].Value = "Commission";
+        supplierWorksheet.Cells[1, 23].Value = "Net";
 
         supplierWorksheet.Cells[1, 1].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 2].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 3].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 4].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 5].Style.Font.Bold = true;
-        supplierWorksheet.Cells[1, 12].Style.Font.Bold = true;
+        supplierWorksheet.Cells[1, 13].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 23].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 22].Style.Font.Bold = true;
         supplierWorksheet.Cells[1, 21].Style.Font.Bold = true;
 
         supplierWorksheet.DefaultColWidth = 14;
 
-        //CommissionSalesSheet columns to take data from
         var branchNameColumn = 3;
         var productNameColumn = 8;
         var pluCodeColumn = 6;
