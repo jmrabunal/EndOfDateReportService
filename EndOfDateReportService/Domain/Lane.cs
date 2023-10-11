@@ -11,6 +11,7 @@ public class Lane
     public int Id { get; set; }
     public int LaneId { get; set; }
     public int BranchId { get; set; }
+    public double? CallAdjustment { get; set; }
     [JsonIgnore]
     [BindNever]
     public Branch? Branch { get; set; }
