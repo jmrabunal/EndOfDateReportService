@@ -88,7 +88,8 @@ namespace EndOfDateReportService.Services
                             laneFromDb = await _repository.CreateLane(new Lane()
                             {
                                 LaneId = lane,
-                                BranchId = branch.Id
+                                BranchId = branch.Id,
+                                CallAdjustment = 0,
                             });
                         }
 
